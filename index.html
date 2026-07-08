@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบใบร้องขอให้แก้ไข (CAR) — Samaphan International</title>
+<style>
+  :root{
+    --ink:#1c2434; --ink-soft:#4a5468; --muted:#8a93a6; --faint:#b9c0cd;
+    --line:#e3e7ee; --line-soft:#eef1f6; --bg:#f5f7fa; --surface:#ffffff;
+    --brand:#1f6f5c; --brand-soft:#e6f2ee; --brand-ink:#125646;
+    --amber:#b5761b; --amber-soft:#fbf1de; --blue:#2f6fb0; --blue-soft:#e7f0f9;
+    --purple:#6d4ea8; --purple-soft:#efe9f8; --red:#b23b4a; --red-soft:#fbe8ea;
+    --green:#2f8a5b; --green-soft:#e4f4ea; --gray-soft:#eef1f6;
+    --radius:10px; --radius-sm:7px;
+    --shadow:0 1px 2px rgba(28,36,52,.04),0 4px 16px rgba(28,36,52,.06);
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Sarabun",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:-.01em}
+  button{font-family:inherit;cursor:pointer}
+  input,textarea,select{font-family:inherit;font-size:14px}
+  .mono{font-family:var(--mono)}
+
+  /* Layout */
+  .app{display:flex;min-height:100vh}
+  .sidebar{width:236px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .brand{padding:20px 20px 16px;border-bottom:1px solid var(--line-soft)}
+  .brand .logo{display:flex;align-items:center;gap:10px}
+  .brand .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--brand),#2c9178);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;transform:rotate(-4deg)}
+  .brand .name{font-weight:700;font-size:14px;letter-spacing:-.02em}
+  .brand .sub{font-size:11px;color:var(--muted);margin-top:1px}
+  .nav{padding:12px 12px;flex:1;overflow-y:auto}
+  .nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);padding:8px 10px 4px;font-weight:700}
+  .nav a{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius-sm);color:var(--ink-soft);text-decoration:none;font-size:13.5px;font-weight:500;margin-bottom:1px;transition:background .12s}
+  .nav a:hover{background:var(--gray-soft)}
+  .nav a.active{background:var(--brand-soft);color:var(--brand-ink);font-weight:600}
+  .nav a .ico{width:17px;height:17px;flex-shrink:0;opacity:.85}
+  .nav a .badge{margin-left:auto;background:var(--brand);color:#fff;font-size:10.5px;font-weight:700;min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+  .who{padding:12px;border-top:1px solid var(--line-soft)}
+  .who-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);font-weight:700;padding:0 4px 6px}
+  .who select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font-weight:500}
+  .who-roles{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  .who-roles .pill{font-size:10.5px;padding:2px 8px}
+  .who-roles .none{font-size:11.5px;color:var(--faint);font-style:italic}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{height:60px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 28px;gap:16px;position:sticky;top:0;z-index:20}
+  .topbar h2{font-size:16px}
+  .topbar .crumb{color:var(--muted);font-weight:500;font-size:13px}
+  .topbar .spacer{flex:1}
+  .content{padding:28px;max-width:1080px;width:100%;margin:0 auto}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600;font-size:13.5px;transition:all .12s}
+  .btn:hover{border-color:var(--faint);background:#fafbfc}
+  .btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-ink);border-color:var(--brand-ink)}
+  .btn-danger{background:var(--surface);border-color:var(--red);color:var(--red)}
+  .btn-danger:hover{background:var(--red-soft)}
+  .btn-sm{padding:5px 11px;font-size:12.5px}
+  .btn-ghost{border-color:transparent;background:transparent;color:var(--ink-soft)}
+  .btn-ghost:hover{background:var(--gray-soft)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn .ico{width:15px;height:15px}
+
+  /* Cards */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card-pad{padding:22px 24px}
+  .card+.card{margin-top:16px}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .stat .n{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .stat .l{font-size:12.5px;color:var(--muted);margin-top:6px;font-weight:500}
+  .stat .bar{height:3px;border-radius:2px;margin-top:12px;background:var(--line-soft);overflow:hidden}
+  .stat .bar>i{display:block;height:100%;border-radius:2px}
+
+  /* Table */
+  .tbl-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .tbl-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line-soft)}
+  .tbl-head h3{font-size:14.5px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;padding:11px 20px;background:#fafbfc;border-bottom:1px solid var(--line-soft)}
+  td{padding:13px 20px;border-bottom:1px solid var(--line-soft);font-size:13.5px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr{cursor:pointer;transition:background .1s}
+  tbody tr:hover{background:#fafbfc}
+  .empty{padding:48px 20px;text-align:center;color:var(--muted)}
+  .empty .big{font-size:15px;color:var(--ink-soft);font-weight:600;margin-bottom:4px}
+
+  /* Pills */
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .pill-gray{background:var(--gray-soft);color:var(--ink-soft)}
+  .pill-amber{background:var(--amber-soft);color:var(--amber)}
+  .pill-blue{background:var(--blue-soft);color:var(--blue)}
+  .pill-purple{background:var(--purple-soft);color:var(--purple)}
+  .pill-green{background:var(--green-soft);color:var(--green)}
+  .pill-red{background:var(--red-soft);color:var(--red)}
+  .src-tag{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:6px;font-family:var(--mono);font-weight:700;font-size:12px;background:var(--brand-soft);color:var(--brand-ink)}
+
+  /* Forms */
+  .field{margin-bottom:18px}
+  .field label{display:block;font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-bottom:6px}
+  .field .hint{font-size:11.5px;color:var(--muted);font-weight:400;margin-left:6px}
+  .field input[type=text],.field input[type=email],.field input[type=date],.field textarea,.field select{
+    width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);transition:border .12s,box-shadow .12s}
+  .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .field input:read-only{background:var(--gray-soft);color:var(--ink-soft)}
+  .field textarea{resize:vertical;min-height:70px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .req::after{content:" *";color:var(--red)}
+
+  /* Source picker */
+  .src-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px}
+  .src-opt{border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:11px 13px;cursor:pointer;transition:all .12s;background:var(--surface)}
+  .src-opt:hover{border-color:var(--faint)}
+  .src-opt.sel{border-color:var(--brand);background:var(--brand-soft)}
+  .src-opt .code{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--brand-ink)}
+  .src-opt .lbl{font-size:12px;color:var(--ink-soft);margin-top:2px}
+  .src-opt.sel .lbl{color:var(--brand-ink)}
+
+  /* Attachments */
+  .attach-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;max-width:420px}
+  .attach{aspect-ratio:1;border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px}
+  .attach.filled{background:var(--brand-soft);color:var(--brand-ink)}
+  .attach.add{border:1.5px dashed var(--faint);color:var(--muted);cursor:pointer;transition:all .12s}
+  .attach.add:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+  .attach.slot{border:1.5px dashed var(--line-soft)}
+  .attach .ico{width:20px;height:20px}
+
+  /* Section header inside detail */
+  .sec{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;background:var(--surface)}
+  .sec-h{display:flex;align-items:center;gap:11px;padding:14px 20px;border-bottom:1px solid var(--line-soft);background:#fafbfc}
+  .sec-h .num{width:24px;height:24px;border-radius:7px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;flex-shrink:0}
+  .sec-h.done .num{background:var(--green)}
+  .sec-h.wait .num{background:var(--faint)}
+  .sec-h h4{font-size:14px}
+  .sec-h .sub{font-size:12px;color:var(--muted);font-weight:500}
+  .sec-h .pill{margin-left:auto}
+  .sec-body{padding:20px}
+  .sec-locked{padding:26px 20px;text-align:center;color:var(--muted);font-size:13px}
+
+  /* Read display */
+  .disp{margin-bottom:16px}
+  .disp .dl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .disp .dv{font-size:14px;color:var(--ink);white-space:pre-wrap}
+  .disp .dv.empty-v{color:var(--faint);font-style:italic}
+  .disp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px}
+
+  /* Timeline */
+  .tl{position:relative;padding-left:26px}
+  .tl::before{content:"";position:absolute;left:8px;top:4px;bottom:4px;width:2px;background:var(--line)}
+  .tl-item{position:relative;padding-bottom:16px}
+  .tl-item:last-child{padding-bottom:0}
+  .tl-item::before{content:"";position:absolute;left:-22px;top:3px;width:11px;height:11px;border-radius:50%;background:var(--surface);border:2px solid var(--faint)}
+  .tl-item.ok::before{border-color:var(--green);background:var(--green)}
+  .tl-item.no::before{border-color:var(--amber);background:var(--amber)}
+  .tl-item.rej::before{border-color:var(--red);background:var(--red)}
+  .tl-item .tt{font-size:13px;font-weight:600}
+  .tl-item .td{font-size:12px;color:var(--muted);margin-top:1px}
+  .tl-item .tx{font-size:12.5px;color:var(--ink-soft);margin-top:3px;background:var(--gray-soft);padding:7px 10px;border-radius:6px}
+
+  /* Followup list */
+  .fu{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:10px}
+  .fu-row{display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--line-soft)}
+  .fu-row:last-child{border-bottom:none}
+  .fu-row .rn{width:26px;height:26px;border-radius:7px;background:var(--purple-soft);color:var(--purple);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;flex-shrink:0}
+  .fu-row .info{flex:1;min-width:0}
+  .fu-row .info .t{font-size:13px;font-weight:600}
+  .fu-row .info .d{font-size:11.5px;color:var(--muted)}
+
+  /* Toggle */
+  .toggle{display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+  .toggle .track{width:38px;height:22px;border-radius:11px;background:var(--faint);position:relative;transition:background .15s}
+  .toggle .track>i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .toggle.on .track{background:var(--brand)}
+  .toggle.on .track>i{transform:translateX(16px)}
+
+  /* Result choice */
+  .choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .choice{border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:13px 15px;cursor:pointer;display:flex;align-items:center;gap:9px;font-weight:600;font-size:13.5px;color:var(--ink-soft);transition:all .12s}
+  .choice:hover{border-color:var(--faint)}
+  .choice.sel-close{border-color:var(--green);background:var(--green-soft);color:var(--green)}
+  .choice.sel-new{border-color:var(--red);background:var(--red-soft);color:var(--red)}
+  .choice .ico{width:18px;height:18px}
+
+  /* Banner */
+  .banner{display:flex;align-items:flex-start;gap:11px;padding:12px 15px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:16px}
+  .banner .ico{width:17px;height:17px;flex-shrink:0;margin-top:1px}
+  .banner-info{background:var(--blue-soft);color:#1e5687}
+  .banner-warn{background:var(--amber-soft);color:#8a5a12}
+  .banner-ok{background:var(--green-soft);color:#1f6a44}
+  .banner-mut{background:var(--gray-soft);color:var(--ink-soft)}
+
+  .actions-bar{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:20px;padding-top:18px;border-top:1px solid var(--line-soft)}
+  .actions-bar .note{margin-right:auto;font-size:12.5px;color:var(--muted)}
+
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(28,36,52,.42);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(2px)}
+  .modal{background:var(--surface);border-radius:var(--radius);box-shadow:0 20px 60px rgba(28,36,52,.28);max-width:440px;width:100%;overflow:hidden}
+  .modal-h{padding:18px 22px 0}
+  .modal-h h3{font-size:15.5px}
+  .modal-b{padding:14px 22px 20px}
+  .modal-f{padding:14px 22px;background:#fafbfc;border-top:1px solid var(--line-soft);display:flex;gap:9px;justify-content:flex-end}
+
+  /* Toast */
+  .toast-wrap{position:fixed;bottom:22px;right:22px;z-index:200;display:flex;flex-direction:column;gap:9px}
+  .toast{background:var(--ink);color:#fff;padding:11px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;align-items:center;gap:9px;animation:slideup .25s ease}
+  .toast .ico{width:16px;height:16px}
+  @keyframes slideup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  /* Filter tabs */
+  .ftabs{display:flex;gap:4px;flex-wrap:wrap}
+  .ftab{padding:6px 13px;border-radius:20px;font-size:12.5px;font-weight:600;color:var(--ink-soft);background:transparent;border:1px solid transparent;transition:all .12s}
+  .ftab:hover{background:var(--gray-soft)}
+  .ftab.active{background:var(--ink);color:#fff}
+
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;font-weight:600;background:none;border:none;padding:6px 0;margin-bottom:6px}
+  .back-link:hover{color:var(--ink)}
+
+  .detail-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px}
+  .detail-head .car-id{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-.01em}
+  .detail-head .meta{color:var(--muted);font-size:13px;margin-top:2px}
+  .detail-head .pill{margin-top:4px}
+
+  .step-flow{display:flex;align-items:center;gap:4px;margin-bottom:22px;flex-wrap:wrap}
+  .step-node{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+  .step-node.done{background:var(--green-soft);border-color:transparent;color:var(--green)}
+  .step-node.active{background:var(--ink);border-color:var(--ink);color:#fff}
+  .step-node .sn{width:16px;height:16px;border-radius:50%;background:currentColor;color:var(--surface);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
+  .step-node.active .sn{background:#fff;color:var(--ink)}
+  .step-arrow{color:var(--faint);width:14px;height:14px;flex-shrink:0}
+
+  @media(max-width:820px){
+    .sidebar{display:none}
+    .row2,.row3,.disp-grid{grid-template-columns:1fr}
+    .content{padding:18px}
+    .topbar{padding:0 18px}
+    .attach-grid{max-width:none}
+  }
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+  /* User role selector */
+  .urole-list{display:flex;flex-direction:column;gap:7px;margin-top:2px}
+  .urole{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);cursor:pointer;transition:all .12s;background:var(--surface)}
+  .urole:hover{border-color:var(--faint)}
+  .urole.on{border-color:var(--brand);background:var(--brand-soft)}
+  .urole-check{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--faint);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;background:var(--surface)}
+  .urole.on .urole-check{background:var(--brand);border-color:var(--brand)}
+  .urole-check .ico{width:13px;height:13px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">
+        <div class="mark">S</div>
+        <div>
+          <div class="name">Samaphan CAR</div>
+          <div class="sub">ระบบใบร้องขอให้แก้ไข</div>
+        </div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-label">ทั่วไป</div>
+      <a data-view="dashboard" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
+      <a data-view="new"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>แจ้ง CAR ใหม่</a>
+      <a data-view="inbox"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>งานของฉัน<span class="badge" id="inboxCount">0</span></a>
+      <a data-view="mycars"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>ประวัติการแจ้ง</a>
+      <div class="nav-label">คิวงาน</div>
+      <a data-view="q_review"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>CAR รอตรวจสอบ<span class="badge" id="cnt_review">0</span></a>
+      <a data-view="q_fix"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>CAR รอแก้ไข<span class="badge" id="cnt_fix">0</span></a>
+      <a data-view="q_qmr"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>CAR รอ QMR ปิด<span class="badge" id="cnt_qmr">0</span></a>
+      <a data-view="allcars"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>CAR ทั้งหมด<span class="badge" id="navCount">0</span></a>
+      <div class="nav-label">จัดการ</div>
+      <a data-view="report"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>รายงาน</a>
+      <a data-view="users"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>จัดการผู้ใช้งาน<span class="badge" id="userCount">0</span></a>
+      <a data-view="permissions"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>สิทธิ์การใช้งาน</a>
+      <a data-view="auditlog"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Audit Log</a>
+    </nav>
+    <div class="who">
+      <div class="who-label">เข้าใช้งานในนาม</div>
+      <select id="userSwitch"></select>
+      <div class="who-roles" id="whoRoles"></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <h2 id="pageTitle">แดชบอร์ด</h2>
+      <span class="crumb" id="pageCrumb"></span>
+      <div class="spacer"></div>
+      <button class="btn btn-primary btn-sm" id="topbarNew" onclick="go('new')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>แจ้ง CAR ใหม่</button>
+    </header>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+<div id="modalHost"></div>
+
+<script>
+/* ============================================================
+   ระบบ CAR — ข้อมูลและ logic ทั้งหมด (in-memory)
+   ============================================================ */
+
+/* ---- Master data ---- */
+const SOURCES = {
+  I:{code:"I",label:"ตรวจติดตามภายใน",full:"การตรวจติดตามคุณภาพภายใน"},
+  N:{code:"N",label:"รายงาน NCR",full:"รายงานการเกิด NCR"},
+  C:{code:"C",label:"ข้อร้องเรียนลูกค้า",full:"ข้อร้องเรียนจากลูกค้า"},
+  O:{code:"O",label:"การปฏิบัติงาน/อื่นๆ",full:"การปฏิบัติงาน และอื่นๆ"}
+};
+
+/* ---- Status definitions (state machine) ---- */
+const STATUS = {
+  DRAFT:        {code:"DRAFT",label:"ร่าง",pill:"pill-gray"},
+  PENDING_OPEN: {code:"PENDING_OPEN",label:"รออนุมัติเปิดงาน",pill:"pill-amber"},
+  IN_PROGRESS:  {code:"IN_PROGRESS",label:"กำลังแก้ไข",pill:"pill-blue"},
+  PENDING_CLOSE:{code:"PENDING_CLOSE",label:"รออนุมัติปิดงาน",pill:"pill-amber"},
+  FOLLOW_UP:    {code:"FOLLOW_UP",label:"ติดตามผล",pill:"pill-purple"},
+  SUMMARY:      {code:"SUMMARY",label:"รอ QMR สรุป",pill:"pill-purple"},
+  CLOSED:       {code:"CLOSED",label:"ปิดใบแล้ว",pill:"pill-green"},
+  NEW_CAR_ISSUED:{code:"NEW_CAR_ISSUED",label:"ออกใบใหม่",pill:"pill-red"}
+};
+/* ลำดับ step สำหรับแสดง progress */
+const STEP_ORDER = ["DRAFT","PENDING_OPEN","IN_PROGRESS","PENDING_CLOSE","FOLLOW_UP","SUMMARY","CLOSED"];
+
+/* ---- Counter: แยกตามประเภท + ปี, รีเซ็ตทุกปี ---- */
+const counters = {}; // key = `${type}-${year}` -> last number
+function nextCarNo(type){
+  const yr = new Date().getFullYear();
+  const key = `${type}-${yr}`;
+  const last = counters[key] || 0;
+  const next = last + 1;
+  if(next > 999) throw new Error("เลขลำดับเกิน 999 สำหรับปีนี้");
+  counters[key] = next;
+  const seq = String(next).padStart(3,"0");
+  const yy = String(yr).slice(-2);
+  return {carNo:`${type}-${seq}-${yy}`, seq:next, year:yr};
+}
+function peekCarNo(type){
+  const yr = new Date().getFullYear();
+  const key = `${type}-${yr}`;
+  const next = (counters[key]||0)+1;
+  return `${type}-${String(next).padStart(3,"0")}-${String(yr).slice(-2)}`;
+}
+
+/* ---- Data store ---- */
+let cars = [];          // ใบ CAR ทั้งหมด
+let carSeq = 0;         // internal id
+const todayStr = ()=>{ const d=new Date(); return d.toISOString().slice(0,10); };
+const nowStr = ()=>{ const d=new Date(); return d.toISOString().slice(0,16).replace("T"," "); };
+function fmtDate(s){ if(!s) return "—"; const p=s.slice(0,10).split("-"); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s; }
+function fmtDateTime(s){ if(!s) return "—"; const [d,t]=s.split(" "); return `${fmtDate(d)}${t?" "+t:""}`; }
+
+/* ---- current role ---- */
+const ROLE_LABEL = {REPORTER:"ผู้แจ้ง",REVIEWER:"ผู้ตรวจสอบ",AUDITEE:"ผู้แก้ไข",QMR:"QMR",ADMIN:"Admin"};
+
+/* ผู้ใช้ที่กำลังเข้าใช้งาน — สิทธิ์อิงตามบทบาทของผู้ใช้คนนี้ */
+let currentUserId = null;
+function currentUser(){ return userById(currentUserId); }
+function currentRoles(){ const u=currentUser(); return u?u.roles:[]; }
+function iHaveRole(code){ return currentRoles().includes(code); }
+function myName(){ const u=currentUser(); return u?u.fullName:"—"; }
+/* รวมชื่อบทบาทของผู้ใช้ปัจจุบันเป็นข้อความ */
+function myRolesText(){
+  const r=currentRoles();
+  return r.length? r.map(c=>ROLE_DEFS[c].name).join(" · ") : "ไม่มีสิทธิ์";
+}
+
+/* ---- Roles master (สอดคล้องตาราง ROLES) ---- */
+const ROLE_DEFS = {
+  REPORTER:{code:"REPORTER",name:"ผู้แจ้ง",desc:"แจ้งปัญหาและกรอกส่วนที่ 1",pill:"pill-blue"},
+  REVIEWER:{code:"REVIEWER",name:"ผู้ตรวจสอบ",desc:"ตรวจสอบ อนุมัติ และมอบหมายผู้แก้ไข",pill:"pill-amber"},
+  AUDITEE:{code:"AUDITEE",name:"ผู้แก้ไข",desc:"วิเคราะห์สาเหตุและแก้ไข (ส่วนที่ 2)",pill:"pill-purple"},
+  QMR:{code:"QMR",name:"QMR",desc:"ตรวจภาพรวมและอนุมัติปิดใบ CAR",pill:"pill-red"},
+  ADMIN:{code:"ADMIN",name:"Admin",desc:"ดูแลระบบ กำหนดสิทธิ์และการเข้าถึงเมนู",pill:"pill-gray"}
+};
+
+/* ---- สิทธิ์การเห็นเมนูตาม role (ตามตารางที่กำหนด) ---- */
+const MENU_ACCESS = {
+  dashboard:  ["REVIEWER","QMR","ADMIN"],
+  new:        ["REPORTER","REVIEWER","AUDITEE","QMR"],
+  inbox:      ["REVIEWER","AUDITEE","QMR"],
+  mycars:     ["REPORTER","REVIEWER","AUDITEE","QMR"],
+  q_review:   ["QMR"],
+  q_fix:      ["QMR"],
+  q_qmr:      ["QMR"],
+  allcars:    ["REVIEWER","QMR"],
+  report:     ["REVIEWER","QMR","ADMIN"],
+  users:      ["ADMIN"],
+  permissions:["ADMIN"],
+  auditlog:   ["REVIEWER","QMR","ADMIN"]
+};
+function canSeeMenu(view){
+  const allowed=MENU_ACCESS[view]; if(!allowed) return true;
+  return currentRoles().some(r=>allowed.includes(r));
+}
+
+/* ---- Users (สอดคล้องตาราง USERS + USER_ROLES many-to-many) ---- */
+let userSeq = 0;
+let users = [];
+function createUser(data){
+  userSeq++;
+  users.push({
+    id:userSeq, fullName:data.fullName, email:data.email,
+    department:data.department||"", roles:data.roles||[], active:data.active!==false
+  });
+  return users[users.length-1];
+}
+function userById(id){ return users.find(u=>u.id===id); }
+function usersWithRole(code){ return users.filter(u=>u.active && u.roles.includes(code)); }
+
+/* seed ผู้ใช้ตั้งต้น */
+function seedUsers(){
+  if(users.length) return;
+  createUser({fullName:"ภคพร เปลี่ยนจรูญ",email:"pakaphorn@samh.co.th",department:"เจ้าหน้าที่",roles:["REPORTER"]});
+  createUser({fullName:"ภูริตาสินี ศรีวิชัย",email:"phuritasinee@samh.co.th",department:"เซอร์วิสเอ็นจิเนีย",roles:["AUDITEE"]});
+  createUser({fullName:"อับดุลเลาะ อภิบาลบำรุง",email:"abdulloh@samh.co.th",department:"เซอร์วิสเอ็นจิเนีย",roles:["AUDITEE"]});
+  createUser({fullName:"ชนาภา มณีธวัช",email:"chanapa@samh.co.th",department:"ผู้จัดการงานประสบการณ์ลูกค้า",roles:["ADMIN"]});
+  createUser({fullName:"วัศพจน์ ตากวิริยะนันท์",email:"wadhsapodh@samh.co.th",department:"ผู้ช่วยกรรมการผู้จัดการ",roles:["QMR"]});
+  createUser({fullName:"ภัควรินทร์ พัชรกุลธนวิทย์",email:"phakwarin@samh.co.th",department:"ผู้ช่วยผู้จัดการ",roles:["REPORTER"]});
+  createUser({fullName:"พัชรินทร์ สมเพชร",email:"patcharin_s@samh.co.th",department:"หัวหน้างาน",roles:["REVIEWER"]});
+  createUser({fullName:"สรธัญ พิทักษ์วนาราษฎร์",email:"sorathan@samh.co.th",department:"หัวหน้างาน",roles:["REVIEWER"]});
+  createUser({fullName:"ปัญญา บูชาเทียน",email:"panya_b@samh.co.th",department:"หัวหน้าช่าง",roles:["AUDITEE"]});
+}
+
+/* ============================================================
+   Business logic — การกระทำต่อใบ CAR
+   ============================================================ */
+
+function createCar(data){
+  const {carNo,seq,year} = nextCarNo(data.sourceType);
+  carSeq++;
+  const car = {
+    id:carSeq, carNo, sourceType:data.sourceType, seq, year,
+    status:"PENDING_OPEN",
+    // ส่วนที่ 1
+    reporterId:data.reporterId||null,
+    reporterName:data.reporterName, reporterEmail:data.reporterEmail,
+    customerName:data.customerName, issueDate:data.issueDate,
+    problemDetail:data.problemDetail, problemImages:data.problemImages||0,
+    // ส่วนที่ 2
+    fixerId:null,
+    auditeeDept:"", auditeeName:"", rootCause:"", correctiveAction:"",
+    preventiveAction:"", correctionImages:0, fixCompletedAt:"",
+    // ส่วนที่ 3
+    needFollowup:null, followups:[], finalSummary:"", finalResult:"",
+    closedBy:"", closedAt:"",
+    // meta
+    refOldCarNo:data.refOldCarNo||"", createdAt:nowStr(),
+    approvals:[], // ประวัติการอนุมัติ
+    log:[]
+  };
+  addLog(car,"สร้างใบและส่งขออนุมัติเปิดงาน",data.reporterName);
+  cars.unshift(car);
+  return car;
+}
+function addLog(car,text,who){ car.log.unshift({text,who:who||myName(),at:nowStr()}); }
+function addApproval(car,type,result,by,reason){
+  car.approvals.unshift({type,result,by,reason:reason||"",at:nowStr()});
+}
+
+/* อนุมัติเปิดงาน + มอบหมายผู้แก้ไข */
+function approveOpen(car,by,fixerId){
+  addApproval(car,"OPEN","APPROVED",by,"");
+  car.fixerId=fixerId||null;
+  const fx=userById(fixerId);
+  car.auditeeName=fx?fx.fullName:"";
+  car.auditeeDept=fx?fx.department:"";
+  car.status="IN_PROGRESS";
+  addLog(car,"อนุมัติเปิดงาน — มอบหมาย"+(fx?" "+fx.fullName:"ผู้แก้ไข"),by);
+}
+function rejectOpen(car,by,reason){
+  addApproval(car,"OPEN","REJECTED",by,reason);
+  car.status="DRAFT";
+  addLog(car,"ตีกลับให้แก้ไขข้อมูลการแจ้ง: "+reason,by);
+}
+/* ผู้แจ้งแก้ไขร่างแล้วส่งใหม่ */
+function resubmitOpen(car){
+  car.status="PENDING_OPEN";
+  addLog(car,"ส่งข้อมูลการแจ้งอีกครั้ง","ผู้แจ้ง");
+}
+/* มอบหมาย + ส่งงานแก้ไข */
+function submitCorrection(car,data){
+  car.auditeeDept=data.auditeeDept; car.auditeeName=data.auditeeName;
+  car.rootCause=data.rootCause; car.correctiveAction=data.correctiveAction;
+  car.preventiveAction=data.preventiveAction; car.correctionImages=data.correctionImages||0;
+  car.fixCompletedAt=nowStr();
+  car.status="PENDING_CLOSE";
+  addLog(car,"ส่งงานแก้ไข (บันทึกวันที่แก้เสร็จ) — ขออนุมัติปิดงาน",data.auditeeName);
+}
+/* อนุมัติปิดงาน */
+function approveClose(car,by){
+  addApproval(car,"CLOSE","APPROVED",by,"");
+  car.status="FOLLOW_UP";
+  addLog(car,"อนุมัติปิดงาน — เข้าสู่ขั้นตอนติดตามผล",by);
+}
+function rejectClose(car,by,reason){
+  addApproval(car,"CLOSE","REJECTED",by,reason);
+  car.status="IN_PROGRESS";
+  addLog(car,"ตีกลับให้แก้ไขเพิ่มเติม: "+reason,by);
+}
+/* เพิ่มการติดตาม */
+function addFollowup(car,data){
+  const round = car.followups.length+1;
+  car.followups.push({round,date:data.date,result:data.result,completed:data.completed,nextDue:data.nextDue||""});
+  addLog(car,`บันทึกติดตามครั้งที่ ${round} — ${data.completed?"เสร็จ":"ยังไม่เสร็จ"}`,myName());
+}
+/* QMR สรุปและปิด */
+function finalizeCar(car,data){
+  car.needFollowup = car.followups.length>0;
+  car.finalSummary=data.summary; car.finalResult=data.result;
+  car.closedBy="QMR"; car.closedAt=nowStr();
+  if(data.result==="CLOSE"){
+    car.status="CLOSED";
+    addLog(car,"QMR สรุปผลและปิดใบ CAR","QMR");
+  }else{
+    car.status="NEW_CAR_ISSUED";
+    addLog(car,"QMR สรุปผลและออก CAR ใหม่โดยอ้างอิงใบนี้","QMR");
+    // สร้างใบใหม่อ้างอิงใบเดิม
+    const nc = createCar({
+      sourceType:car.sourceType, reporterId:car.reporterId, reporterName:car.reporterName, reporterEmail:car.reporterEmail,
+      customerName:car.customerName, issueDate:todayStr(),
+      problemDetail:"[ออกใหม่จาก "+car.carNo+"] ",problemImages:0, refOldCarNo:car.carNo
+    });
+    car.newCarNo = nc.carNo;
+  }
+}
+
+/* ---- ขอบเขตการมองเห็นใบ CAR ตาม role ----
+   ผู้แจ้ง: เห็นเฉพาะใบที่ตัวเองแจ้ง
+   ผู้แก้ไข: เห็นเฉพาะใบที่ได้รับมอบหมาย + ใบที่รอรับงาน (ยังไม่มีผู้แก้ไข)
+   ผู้ตรวจสอบ / QMR / Admin: เห็นทุกใบ
+   ถ้าผู้ใช้ถือหลาย role จะเห็นแบบรวม (union) ของทุก role */
+function canViewCar(car){
+  const roles=currentRoles();
+  const uid=currentUserId;
+  if(roles.some(r=>["REVIEWER","QMR","ADMIN"].includes(r))) return true;
+  if(roles.includes("REPORTER") && car.reporterId===uid) return true;
+  if(roles.includes("AUDITEE") && car.fixerId===uid) return true;
+  return false;
+}
+function visibleCars(){ return cars.filter(canViewCar); }
+
+/* ---- สิทธิ์: ผู้ใช้ที่มีบทบาทเหล่านี้ ทำอะไรได้ที่สถานะใด ---- */
+function pendingActionFor(car,roles){
+  const has=c=>roles.includes(c);
+  switch(car.status){
+    case "DRAFT": return has("REPORTER")?"แก้ไขและส่งใหม่":null;
+    case "PENDING_OPEN": return has("REVIEWER")?"ตรวจสอบและมอบหมาย":null;
+    case "IN_PROGRESS": return has("AUDITEE")?"กรอกการแก้ไข":null;
+    case "PENDING_CLOSE": return has("REVIEWER")?"อนุมัติผลการแก้ไข":null;
+    case "FOLLOW_UP": return has("QMR")?"ส่ง QMR พิจารณาปิด":null;
+    case "SUMMARY": return has("QMR")?"สรุปและปิดใบ":null;
+    default: return null;
+  }
+}
+
+/* ============================================================
+   Rendering
+   ============================================================ */
+const $ = s=>document.querySelector(s);
+const content = $("#content");
+let currentView = "dashboard";
+let currentCarId = null;
+
+const ICON = {
+  check:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>',
+  x:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  arrow:'<svg class="step-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>',
+  photo:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+  mail:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 6 12 13 2 6"/></svg>',
+  plus:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  clock:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>',
+  info:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  refresh:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+  back:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+  pdf:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="18" x2="13" y2="18"/></svg>'
+};
+
+function pill(statusCode){
+  const s=STATUS[statusCode];
+  return `<span class="pill ${s.pill}"><span class="dot"></span>${s.label}</span>`;
+}
+
+function go(view,carId){
+  /* guard: ถ้า role ปัจจุบันไม่มีสิทธิ์เห็น view นี้ ให้เด้งไปหน้าแรกที่เห็นได้ */
+  if(MENU_ACCESS[view] && !canSeeMenu(view)){ view=firstAllowedView(); }
+  currentView=view; if(carId!==undefined) currentCarId=carId;
+  document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("active",a.dataset.view===view));
+  const titles={dashboard:"Dashboard",new:"แจ้ง CAR ใหม่",inbox:"งานของฉัน",mycars:"ประวัติการแจ้ง",
+    q_review:"CAR รอตรวจสอบ",q_fix:"CAR รอแก้ไข",q_qmr:"CAR รอ QMR ปิด",allcars:"CAR ทั้งหมด",
+    report:"รายงาน",users:"จัดการผู้ใช้งาน",permissions:"สิทธิ์การใช้งาน",auditlog:"Audit Log",detail:"รายละเอียดใบ CAR"};
+  $("#pageTitle").textContent=titles[view]||"";
+  $("#pageCrumb").textContent = view==="detail"&&currentCarId?("· "+carById(currentCarId).carNo):"";
+  render();
+  content.scrollTop=0; window.scrollTo(0,0);
+}
+/* หาหน้าแรกที่ role ปัจจุบันเห็นได้ (เผื่อ role ไม่เห็น dashboard) */
+function firstAllowedView(){
+  const order=["dashboard","inbox","mycars","q_review","q_fix","q_qmr","allcars","new","report","users"];
+  return order.find(v=>canSeeMenu(v)) || "inbox";
+}
+function carById(id){ return cars.find(c=>c.id===id); }
+
+function updateCounts(){
+  const vis=visibleCars();
+  const nc=$("#navCount"); if(nc) nc.textContent=vis.length;
+  const inbox=vis.filter(c=>pendingActionFor(c,currentRoles())).length;
+  const ic=$("#inboxCount"); if(ic){ ic.textContent=inbox; ic.style.display=inbox?"flex":"none"; }
+  const uc=$("#userCount"); if(uc){ uc.textContent=users.length; uc.style.display=users.length?"flex":"none"; }
+  // badge คิวงาน (นับจาก scope ที่มองเห็น)
+  const setBadge=(id,n)=>{ const e=$(id); if(e){ e.textContent=n; e.style.display=n?"flex":"none"; } };
+  setBadge("#cnt_review", vis.filter(c=>c.status==="PENDING_OPEN").length);
+  setBadge("#cnt_fix", vis.filter(c=>c.status==="IN_PROGRESS").length);
+  setBadge("#cnt_qmr", vis.filter(c=>["FOLLOW_UP","SUMMARY"].includes(c.status)).length);
+}
+
+function render(){
+  updateCounts();
+  applyMenuVisibility();
+  const v=currentView;
+  if(v==="dashboard") return renderDashboard();
+  if(v==="new") return renderNew();
+  if(v==="inbox") return renderInbox();
+  if(v==="detail") return renderDetail();
+  if(v==="report") return renderReport();
+  if(v==="users"||v==="settings") return renderUsers();
+  if(v==="permissions") return renderPermissions();
+  if(v==="auditlog") return renderAuditLog();
+  // มุมมองรายการ CAR ต่างๆ — กรองต่างกัน
+  if(v==="mycars") return renderList(visibleCars().filter(c=>c.reporterId===currentUserId),"ประวัติการแจ้ง","ยังไม่มีใบ CAR ที่คุณแจ้ง");
+  if(v==="q_review") return renderList(visibleCars().filter(c=>c.status==="PENDING_OPEN"),"CAR รอตรวจสอบ","ไม่มีใบที่รอตรวจสอบ");
+  if(v==="q_fix") return renderList(visibleCars().filter(c=>c.status==="IN_PROGRESS"),"CAR รอแก้ไข","ไม่มีใบที่รอแก้ไข");
+  if(v==="q_qmr") return renderList(visibleCars().filter(c=>["FOLLOW_UP","SUMMARY"].includes(c.status)),"CAR รอ QMR ปิด","ไม่มีใบที่รอปิด");
+  if(v==="allcars") return renderList(visibleCars(),"CAR ทั้งหมด","ยังไม่มีใบ CAR");
+  // fallback
+  return renderList(visibleCars(),"รายการ CAR");
+}
+
+/* ซ่อน/แสดงเมนูตามสิทธิ์ของ role ปัจจุบัน */
+function applyMenuVisibility(){
+  document.querySelectorAll("#nav a").forEach(a=>{
+    a.style.display = canSeeMenu(a.dataset.view) ? "flex" : "none";
+  });
+  const tn=$("#topbarNew"); if(tn) tn.style.display=canSeeMenu("new")?"inline-flex":"none";
+}
+
+/* ---- Permissions matrix (Admin) ---- */
+function renderPermissions(){
+  const menuLabels={dashboard:"Dashboard",new:"แจ้ง CAR ใหม่",inbox:"งานของฉัน",mycars:"ประวัติการแจ้ง",
+    q_review:"CAR รอตรวจสอบ",q_fix:"CAR รอแก้ไข",q_qmr:"CAR รอ QMR ปิด",allcars:"CAR ทั้งหมด",
+    report:"รายงาน",users:"จัดการผู้ใช้งาน",permissions:"สิทธิ์การใช้งาน",auditlog:"Audit Log"};
+  const roles=["REPORTER","REVIEWER","AUDITEE","QMR","ADMIN"];
+  let html=`<div class="banner banner-info" style="margin-bottom:16px">${ICON.info}<div>ตารางสิทธิ์การเข้าถึงเมนูของแต่ละบทบาท — แสดงว่าใครเห็นเมนูใด (มุมมองสำหรับ Admin)</div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>เมนู</th>${roles.map(r=>`<th style="text-align:center">${ROLE_DEFS[r].name}</th>`).join("")}</tr></thead><tbody>`;
+  Object.keys(menuLabels).forEach(mk=>{
+    html+=`<tr style="cursor:default"><td style="font-weight:500">${menuLabels[mk]}</td>`;
+    roles.forEach(r=>{
+      const ok=(MENU_ACCESS[mk]||[]).includes(r);
+      html+=`<td style="text-align:center">${ok?`<span style="color:var(--green)">${ICON.check}</span>`:'<span style="color:var(--faint)">–</span>'}</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  content.innerHTML=html;
+}
+
+/* ---- Audit Log ---- */
+function renderAuditLog(){
+  // รวม log จากทุกใบ + ประวัติอนุมัติ เรียงตามเวลาใหม่สุด
+  const events=[];
+  cars.forEach(c=>{
+    c.log.forEach(l=>events.push({car:c.carNo,text:l.text,who:l.who,at:l.at,type:"log"}));
+    c.approvals.forEach(a=>events.push({car:c.carNo,text:(a.type==="OPEN"?"อนุมัติเปิดงาน":"อนุมัติผลการแก้ไข")+" — "+(a.result==="APPROVED"?"อนุมัติ":"ตีกลับ")+(a.reason?" ("+a.reason+")":""),who:a.by,at:a.at,type:"approval"}));
+  });
+  events.sort((a,b)=>b.at.localeCompare(a.at));
+  let html=`<div class="banner banner-info" style="margin-bottom:16px">${ICON.info}<div>ประวัติการดำเนินการทั้งหมดในระบบ เรียงจากล่าสุด — ใช้ตรวจสอบย้อนกลับ (audit trail) ตามมาตรฐาน ISO</div></div>`;
+  if(events.length===0){
+    html+=`<div class="card"><div class="empty"><div class="big">ยังไม่มีประวัติ</div><div>เมื่อมีการดำเนินการกับใบ CAR ประวัติจะแสดงที่นี่</div></div></div>`;
+  }else{
+    html+=`<div class="tbl-wrap"><table><thead><tr><th>เวลา</th><th>CAR No.</th><th>การดำเนินการ</th><th>โดย</th></tr></thead><tbody>`;
+    events.slice(0,100).forEach(e=>{
+      html+=`<tr style="cursor:default"><td style="color:var(--ink-soft);font-size:12.5px;white-space:nowrap">${fmtDateTime(e.at)}</td>
+        <td class="mono" style="font-weight:600">${e.car}</td>
+        <td>${escapeHtml(e.text)}</td>
+        <td style="color:var(--ink-soft)">${escapeHtml(e.who)}</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+  content.innerHTML=html;
+}
+
+/* ---- Report (placeholder) ---- */
+function renderReport(){
+  const total=cars.length;
+  const closed=cars.filter(c=>c.status==="CLOSED").length;
+  const open=cars.filter(c=>!["CLOSED","NEW_CAR_ISSUED"].includes(c.status)).length;
+  const bySource={I:0,N:0,C:0,O:0};
+  cars.forEach(c=>bySource[c.sourceType]=(bySource[c.sourceType]||0)+1);
+  content.innerHTML=`
+  <div class="banner banner-info" style="margin-bottom:16px">${ICON.info}<div>หน้ารายงานภาพรวม สำหรับผู้ตรวจสอบ, QMR และ Admin — ส่วนนี้เป็นโครงเริ่มต้น พร้อมต่อยอดกราฟและสรุปเชิงลึกในรอบถัดไป</div></div>
+  <div class="stats">
+    <div class="stat"><div class="n">${total}</div><div class="l">ใบ CAR ทั้งหมด</div></div>
+    <div class="stat"><div class="n" style="color:var(--blue)">${open}</div><div class="l">กำลังดำเนินการ</div></div>
+    <div class="stat"><div class="n" style="color:var(--green)">${closed}</div><div class="l">ปิดแล้ว</div></div>
+    <div class="stat"><div class="n">${total?Math.round(closed/total*100):0}%</div><div class="l">อัตราปิดสำเร็จ</div></div>
+  </div>
+  <div class="card card-pad">
+    <h3 style="font-size:14px;margin-bottom:14px">จำนวนใบ CAR ตามแหล่งที่มา</h3>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      ${Object.entries(bySource).map(([k,n])=>{
+        const pct=total?Math.round(n/total*100):0;
+        return `<div style="display:flex;align-items:center;gap:12px">
+          <div style="width:150px;flex-shrink:0"><span class="src-tag">${k}</span> <span style="font-size:12.5px;color:var(--ink-soft)">${SOURCES[k].label}</span></div>
+          <div style="flex:1;height:8px;background:var(--line-soft);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:var(--brand);border-radius:4px"></i></div>
+          <div style="width:34px;text-align:right;font-weight:700;font-size:13px">${n}</div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+/* ---- Dashboard ---- */
+function renderDashboard(){
+  const scope=visibleCars();
+  const total=scope.length;
+  const open=scope.filter(c=>!["CLOSED","NEW_CAR_ISSUED"].includes(c.status)).length;
+  const closed=scope.filter(c=>c.status==="CLOSED").length;
+  const mine=scope.filter(c=>pendingActionFor(c,currentRoles())).length;
+  const byStatus={};
+  STEP_ORDER.forEach(s=>byStatus[s]=0);
+  scope.forEach(c=>{byStatus[c.status]=(byStatus[c.status]||0)+1});
+
+  let html=`
+  <div class="stats">
+    <div class="stat"><div class="n">${total}</div><div class="l">ใบ CAR ทั้งหมด</div><div class="bar"><i style="width:100%;background:var(--brand)"></i></div></div>
+    <div class="stat"><div class="n">${open}</div><div class="l">กำลังดำเนินการ</div><div class="bar"><i style="width:${total?open/total*100:0}%;background:var(--blue)"></i></div></div>
+    <div class="stat"><div class="n">${closed}</div><div class="l">ปิดใบแล้ว</div><div class="bar"><i style="width:${total?closed/total*100:0}%;background:var(--green)"></i></div></div>
+    <div class="stat"><div class="n" style="color:${mine?'var(--amber)':'inherit'}">${mine}</div><div class="l">รอ${myName()}ดำเนินการ</div><div class="bar"><i style="width:${total?mine/total*100:0}%;background:var(--amber)"></i></div></div>
+  </div>`;
+
+  if(total===0){
+    html+=`<div class="card"><div class="empty">
+      <div class="big">ยังไม่มีใบ CAR ในระบบ</div>
+      <div style="margin-bottom:16px">เริ่มต้นด้วยการแจ้งปัญหาใบแรก แล้วติดตามการทำงานได้จากที่นี่</div>
+      <button class="btn btn-primary" onclick="go('new')">${ICON.plus}แจ้งปัญหาใหม่</button>
+      <div style="margin-top:14px"><button class="btn btn-sm btn-ghost" onclick="seedDemo()">หรือโหลดตัวอย่างข้อมูลเพื่อทดลอง</button></div>
+    </div></div>`;
+    content.innerHTML=html; return;
+  }
+
+  // distribution
+  html+=`<div class="card card-pad" style="margin-bottom:16px">
+    <h3 style="font-size:14px;margin-bottom:14px">กระจายตามสถานะ</h3>
+    <div style="display:flex;flex-direction:column;gap:9px">`;
+  STEP_ORDER.concat(["NEW_CAR_ISSUED"]).forEach(s=>{
+    const n=byStatus[s]||0; if(n===0&&s!=="CLOSED") return;
+    const pct=total?Math.round(n/total*100):0;
+    html+=`<div style="display:flex;align-items:center;gap:12px">
+      <div style="width:130px;flex-shrink:0">${pill(s)}</div>
+      <div style="flex:1;height:8px;background:var(--line-soft);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:var(--brand);border-radius:4px"></i></div>
+      <div style="width:34px;text-align:right;font-weight:700;font-size:13px">${n}</div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+
+  // recent
+  const recent=cars.slice(0,5);
+  html+=`<div class="tbl-wrap">
+    <div class="tbl-head"><h3>ใบ CAR ล่าสุด</h3><button class="btn btn-sm btn-ghost" onclick="go('allcars')">ดูทั้งหมด →</button></div>
+    <table><thead><tr><th>CAR No.</th><th>แหล่งที่มา</th><th>ลูกค้า/บริษัท</th><th>วันที่แจ้ง</th><th>สถานะ</th></tr></thead><tbody>`;
+  recent.forEach(c=>{
+    html+=`<tr onclick="go('detail',${c.id})">
+      <td class="mono" style="font-weight:600">${c.carNo}</td>
+      <td><span class="src-tag">${c.sourceType}</span> <span style="color:var(--ink-soft);font-size:12.5px">${SOURCES[c.sourceType].label}</span></td>
+      <td>${c.customerName||'<span style="color:var(--faint)">—</span>'}</td>
+      <td style="color:var(--ink-soft)">${fmtDate(c.issueDate)}</td>
+      <td>${pill(c.status)}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  content.innerHTML=html;
+}
+
+/* ---- List ---- */
+let listFilter="ALL";
+function renderList(source,title,emptyMsg){
+  const filters=[["ALL","ทั้งหมด"],["PENDING_OPEN","รอตรวจสอบ"],["IN_PROGRESS","กำลังแก้ไข"],["PENDING_CLOSE","รออนุมัติผล"],["FOLLOW_UP","รอ QMR"],["SUMMARY","รอสรุป"],["CLOSED","ปิดแล้ว"]];
+  let rows = source.filter(c=> listFilter==="ALL"?true:c.status===listFilter);
+  let html=`<div class="tbl-wrap">
+    <div class="tbl-head" style="flex-direction:column;align-items:stretch;gap:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between"><h3>${title||"รายการ CAR"}</h3><span style="font-size:12.5px;color:var(--muted)">${source.length} ใบ</span></div>
+      <div class="ftabs">`;
+  filters.forEach(([v,l])=>{ html+=`<button class="ftab ${listFilter===v?'active':''}" onclick="listFilter='${v}';render()">${l}</button>`; });
+  html+=`</div></div>`;
+  if(rows.length===0){
+    html+=`<div class="empty"><div class="big">${emptyMsg||"ไม่มีใบ CAR ในหมวดนี้"}</div><div>ลองเลือกตัวกรองอื่น</div></div>`;
+  }else{
+    html+=`<table><thead><tr><th>CAR No.</th><th>แหล่งที่มา</th><th>ลูกค้า/บริษัท</th><th>ผู้แจ้ง</th><th>วันที่แจ้ง</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    rows.forEach(c=>{
+      const act=pendingActionFor(c,currentRoles());
+      html+=`<tr onclick="go('detail',${c.id})">
+        <td class="mono" style="font-weight:600">${c.carNo}${c.refOldCarNo?`<div style="font-size:10.5px;color:var(--muted);font-weight:400">↳ จาก ${c.refOldCarNo}</div>`:''}</td>
+        <td><span class="src-tag">${c.sourceType}</span></td>
+        <td>${c.customerName||'<span style="color:var(--faint)">—</span>'}</td>
+        <td style="color:var(--ink-soft)">${c.reporterName}</td>
+        <td style="color:var(--ink-soft)">${fmtDate(c.issueDate)}</td>
+        <td>${pill(c.status)}</td>
+        <td>${act?`<span class="pill pill-amber" style="font-size:11px">${act}</span>`:''}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table>`;
+  }
+  html+=`</div>`;
+  content.innerHTML=html;
+}
+
+/* ---- Inbox ---- */
+function renderInbox(){
+  const mine=cars.filter(c=>pendingActionFor(c,currentRoles()));
+  let html=`<div class="banner banner-info">${ICON.info}<div>กำลังแสดงงานที่รอ <b>${myName()}</b> (${myRolesText()}) ดำเนินการ — สลับผู้ใช้ที่แถบด้านซ้ายเพื่อดูมุมมองของคนอื่น</div></div>`;
+  if(mine.length===0){
+    html+=`<div class="card"><div class="empty"><div class="big">ไม่มีงานค้าง</div><div>ยังไม่มีใบ CAR ที่รอ${myName()}ในตอนนี้</div></div></div>`;
+    content.innerHTML=html; return;
+  }
+  html+=`<div class="tbl-wrap"><table><thead><tr><th>CAR No.</th><th>แหล่งที่มา</th><th>ลูกค้า/บริษัท</th><th>สถานะ</th><th>สิ่งที่ต้องทำ</th></tr></thead><tbody>`;
+  mine.forEach(c=>{
+    html+=`<tr onclick="go('detail',${c.id})">
+      <td class="mono" style="font-weight:600">${c.carNo}</td>
+      <td><span class="src-tag">${c.sourceType}</span></td>
+      <td>${c.customerName||'—'}</td>
+      <td>${pill(c.status)}</td>
+      <td><span class="pill pill-amber">${pendingActionFor(c,currentRoles())}</span></td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  content.innerHTML=html;
+}
+
+/* ---- New CAR form (ส่วนที่ 1) ---- */
+let newForm={sourceType:"N",images:2};
+function renderNew(){
+  const preview=peekCarNo(newForm.sourceType);
+  let html=`<div class="card card-pad" style="max-width:680px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <h3 style="font-size:16px">ส่วนที่ 1 · การแจ้งปัญหาที่พบ</h3>
+      ${pill("PENDING_OPEN")}
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 20px">กรอกข้อมูลการแจ้งปัญหา เมื่อส่งแล้วระบบจะออกเลข CAR อัตโนมัติและส่งให้ผู้อนุมัติตรวจก่อนมอบหมายผู้แก้ไข</p>
+
+    <div class="field">
+      <label class="req">แหล่งที่มาของปัญหา</label>
+      <div class="src-grid">`;
+  Object.values(SOURCES).forEach(s=>{
+    html+=`<div class="src-opt ${newForm.sourceType===s.code?'sel':''}" onclick="newForm.sourceType='${s.code}';renderNew()">
+      <div class="code">${s.code}</div><div class="lbl">${s.label}</div></div>`;
+  });
+  html+=`</div></div>
+
+    <div class="row2">
+      <div class="field"><label>CAR No. <span class="hint">(สร้างอัตโนมัติเมื่อส่ง)</span></label>
+        <input type="text" class="mono" value="${preview}" readonly></div>
+      <div class="field"><label class="req">วันที่แจ้งปัญหา</label>
+        <input type="date" id="f_date" value="${todayStr()}"></div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label class="req">ชื่อผู้แจ้ง</label>
+        <input type="text" id="f_rname" placeholder="เช่น สมชาย ใจดี"></div>
+      <div class="field"><label class="req">Email ผู้แจ้ง</label>
+        <input type="email" id="f_remail" placeholder="name@company.com"></div>
+    </div>
+
+    <div class="field"><label>ชื่อลูกค้า / บริษัท / โรงพยาบาล</label>
+      <input type="text" id="f_customer" placeholder="เช่น โรงพยาบาลสมาพันธ์"></div>
+
+    <div class="field"><label class="req">รายละเอียดปัญหา</label>
+      <textarea id="f_problem" rows="4" placeholder="อธิบายปัญหาที่พบโดยละเอียด">${newForm.prefill||""}</textarea></div>
+
+    <div class="field">
+      <label>แนบรูปภาพหลักฐาน <span class="hint">(สูงสุด 5 รูป)</span></label>
+      <div class="attach-grid" id="attachGrid"></div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:7px" id="attachCount"></div>
+    </div>
+
+    <div class="actions-bar">
+      <span class="note">* จำเป็นต้องกรอก</span>
+      <button class="btn" onclick="go('dashboard')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="submitNew()">ส่งข้อมูลไปผู้อนุมัติ →</button>
+    </div>
+  </div>`;
+  content.innerHTML=html;
+  renderAttach();
+}
+function renderAttach(){
+  const grid=$("#attachGrid"); if(!grid) return;
+  let h="";
+  for(let i=0;i<5;i++){
+    if(i<newForm.images){ h+=`<div class="attach filled">${ICON.photo}<span>รูป ${i+1}</span></div>`; }
+    else if(i===newForm.images){ h+=`<div class="attach add" onclick="if(newForm.images<5){newForm.images++;renderAttach()}">${ICON.plus}<span>เพิ่ม</span></div>`; }
+    else { h+=`<div class="attach slot"></div>`; }
+  }
+  grid.innerHTML=h;
+  $("#attachCount").textContent=`แนบแล้ว ${newForm.images} จาก 5 รูป`+(newForm.images>0?" · คลิกช่องเพิ่มเพื่อจำลองการแนบ":"");
+}
+function submitNew(){
+  const name=$("#f_rname").value.trim();
+  const email=$("#f_remail").value.trim();
+  const problem=$("#f_problem").value.trim();
+  const date=$("#f_date").value;
+  if(!name||!email||!problem||!date){ toast("กรุณากรอกข้อมูลที่จำเป็นให้ครบ",false); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast("รูปแบบ Email ไม่ถูกต้อง",false); return; }
+  const car=createCar({
+    sourceType:newForm.sourceType, reporterId:currentUserId, reporterName:name, reporterEmail:email,
+    customerName:$("#f_customer").value.trim(), issueDate:date,
+    problemDetail:problem, problemImages:newForm.images
+  });
+  newForm={sourceType:"N",images:2};
+  toast(`สร้างใบ ${car.carNo} และส่งให้ผู้อนุมัติแล้ว`,true);
+  go('detail',car.id);
+}
+
+/* ---- Users & permissions view ---- */
+function renderUsers(){
+  // สรุปจำนวนผู้ใช้ต่อ role
+  let roleCards=`<div class="stats" style="margin-bottom:22px">`;
+  Object.values(ROLE_DEFS).forEach(r=>{
+    const n=usersWithRole(r.code).length;
+    roleCards+=`<div class="stat">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="n">${n}</div>${pill_role(r.code)}
+      </div>
+      <div class="l">${r.desc}</div>
+    </div>`;
+  });
+  roleCards+=`</div>`;
+
+  let html=`
+    <div class="banner banner-info">${ICON.info}<div>กำหนดสิทธิ์ผู้ใช้แบบหลายบทบาทได้ (many-to-many) — ผู้ใช้ 1 คนถือได้หลาย role เช่น เป็นทั้งผู้อนุมัติและ QMR ระบบจะส่งงานตาม role ที่ถืออยู่</div></div>
+    ${roleCards}
+    <div class="tbl-wrap">
+      <div class="tbl-head">
+        <h3>รายชื่อผู้ใช้งาน (${users.length})</h3>
+        <button class="btn btn-primary btn-sm" onclick="openUserModal()">${ICON.plus}เพิ่มผู้ใช้</button>
+      </div>`;
+
+  if(users.length===0){
+    html+=`<div class="empty"><div class="big">ยังไม่มีผู้ใช้ในระบบ</div><div style="margin-bottom:14px">เพิ่มผู้ใช้คนแรก หรือโหลดตัวอย่าง</div><button class="btn btn-sm" onclick="seedUsers();refreshUserSwitch();render()">โหลดผู้ใช้ตัวอย่าง</button></div>`;
+  }else{
+    html+=`<table><thead><tr><th>ชื่อ-สกุล</th><th>Email</th><th>หน่วยงาน</th><th>บทบาท (สิทธิ์)</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    users.forEach(u=>{
+      const roleTags = u.roles.length
+        ? u.roles.map(rc=>pill_role(rc)).join(" ")
+        : '<span style="color:var(--faint);font-size:12.5px">ยังไม่กำหนด</span>';
+      html+=`<tr onclick="openUserModal(${u.id})" style="${u.active?'':'opacity:.55'}">
+        <td style="font-weight:600">${escapeHtml(u.fullName)}</td>
+        <td class="mono" style="font-size:12.5px;color:var(--ink-soft)">${escapeHtml(u.email)}</td>
+        <td style="color:var(--ink-soft)">${escapeHtml(u.department)||'—'}</td>
+        <td><div style="display:flex;gap:4px;flex-wrap:wrap">${roleTags}</div></td>
+        <td>${u.active?'<span class="pill pill-green"><span class="dot"></span>ใช้งาน</span>':'<span class="pill pill-gray"><span class="dot"></span>ปิดใช้งาน</span>'}</td>
+        <td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openUserModal(${u.id})">แก้ไข</button></td>
+      </tr>`;
+    });
+    html+=`</tbody></table>`;
+  }
+  html+=`</div>`;
+  content.innerHTML=html;
+}
+function pill_role(code){
+  const r=ROLE_DEFS[code]; if(!r) return "";
+  return `<span class="pill ${r.pill}">${r.name}</span>`;
+}
+
+/* ---- User add/edit modal ---- */
+let editUserId=null, editUserRoles=[];
+function openUserModal(id){
+  const u = id!=null ? userById(id) : null;
+  editUserId = u?u.id:null;
+  editUserRoles = u?[...u.roles]:[];
+  const isEdit=!!u;
+  let roleChecks="";
+  Object.values(ROLE_DEFS).forEach(r=>{
+    const on=editUserRoles.includes(r.code);
+    roleChecks+=`<div class="urole ${on?'on':''}" onclick="toggleUserRole('${r.code}')" id="urole_${r.code}">
+      <div class="urole-check">${on?ICON.check:''}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${r.name}</div><div style="font-size:11.5px;color:var(--muted)">${r.desc}</div></div>
+      ${pill_role(r.code)}
+    </div>`;
+  });
+  $("#modalHost").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-h"><h3>${isEdit?'แก้ไขผู้ใช้':'เพิ่มผู้ใช้ใหม่'}</h3></div>
+      <div class="modal-b">
+        <div class="row2">
+          <div class="field" style="margin-bottom:14px"><label class="req">ชื่อ-สกุล</label><input type="text" id="u_name" value="${u?escapeHtml(u.fullName):''}" placeholder="เช่น สมชาย ใจดี"></div>
+          <div class="field" style="margin-bottom:14px"><label>หน่วยงาน</label><input type="text" id="u_dept" value="${u?escapeHtml(u.department):''}" placeholder="เช่น ฝ่ายผลิต"></div>
+        </div>
+        <div class="field" style="margin-bottom:14px"><label class="req">Email</label><input type="email" id="u_email" value="${u?escapeHtml(u.email):''}" placeholder="name@company.com"></div>
+        <div class="field" style="margin-bottom:14px">
+          <label>บทบาท / สิทธิ์ <span class="hint">(เลือกได้หลายบทบาท)</span></label>
+          <div class="urole-list">${roleChecks}</div>
+        </div>
+        ${isEdit?`<label class="toggle ${u.active?'on':''}" id="u_active_wrap" onclick="toggleUserActive()"><span class="track"><i></i></span>&nbsp;<span style="font-size:13px;font-weight:500">เปิดใช้งานบัญชีนี้</span></label>`:''}
+      </div>
+      <div class="modal-f">
+        ${isEdit?`<button class="btn btn-danger" style="margin-right:auto" onclick="deleteUser(${u.id})">ลบผู้ใช้</button>`:''}
+        <button class="btn" onclick="closeModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="saveUser()">${isEdit?'บันทึกการแก้ไข':'เพิ่มผู้ใช้'}</button>
+      </div>
+    </div></div>`;
+  editUserActive = u?u.active:true;
+}
+let editUserActive=true;
+function toggleUserRole(code){
+  const i=editUserRoles.indexOf(code);
+  if(i>=0) editUserRoles.splice(i,1); else editUserRoles.push(code);
+  const el=$("#urole_"+code);
+  const on=editUserRoles.includes(code);
+  el.classList.toggle("on",on);
+  el.querySelector(".urole-check").innerHTML=on?ICON.check:'';
+}
+function toggleUserActive(){
+  editUserActive=!editUserActive;
+  $("#u_active_wrap").classList.toggle("on",editUserActive);
+}
+function saveUser(){
+  const name=$("#u_name").value.trim();
+  const email=$("#u_email").value.trim();
+  const dept=$("#u_dept").value.trim();
+  if(!name||!email){ toast("กรุณากรอกชื่อและ Email",false); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast("รูปแบบ Email ไม่ถูกต้อง",false); return; }
+  // กันอีเมลซ้ำ
+  const dup=users.find(u=>u.email.toLowerCase()===email.toLowerCase() && u.id!==editUserId);
+  if(dup){ toast("Email นี้ถูกใช้แล้ว",false); return; }
+  if(editUserId!=null){
+    const u=userById(editUserId);
+    u.fullName=name; u.email=email; u.department=dept; u.roles=[...editUserRoles]; u.active=editUserActive;
+    toast("บันทึกการแก้ไขผู้ใช้แล้ว",true);
+  }else{
+    createUser({fullName:name,email:email,department:dept,roles:[...editUserRoles]});
+    toast("เพิ่มผู้ใช้ใหม่แล้ว",true);
+  }
+  closeModal(); refreshUserSwitch(); render();
+}
+function deleteUser(id){
+  openModal({
+    title:"ยืนยันลบผู้ใช้",
+    body:`ต้องการลบผู้ใช้ <b>${escapeHtml(userById(id).fullName)}</b> ออกจากระบบ? การกระทำนี้ย้อนกลับไม่ได้`,
+    confirmLabel:"ลบผู้ใช้",
+    onConfirm:()=>{ users=users.filter(u=>u.id!==id); closeModal(); refreshUserSwitch(); toast("ลบผู้ใช้แล้ว",true); render(); }
+  });
+}
+
+/* ---- Detail view ---- */
+function stepFlow(car){
+  const idx=STEP_ORDER.indexOf(car.status==="NEW_CAR_ISSUED"?"CLOSED":car.status);
+  const labels={DRAFT:"ร่าง",PENDING_OPEN:"อนุมัติเปิด",IN_PROGRESS:"แก้ไข",PENDING_CLOSE:"อนุมัติปิด",FOLLOW_UP:"ติดตาม",SUMMARY:"สรุป",CLOSED:"ปิดใบ"};
+  let h=`<div class="step-flow">`;
+  STEP_ORDER.forEach((s,i)=>{
+    const cls=i<idx?"done":(i===idx?"active":"");
+    h+=`<div class="step-node ${cls}"><span class="sn">${i<idx?'✓':i+1}</span>${labels[s]}</div>`;
+    if(i<STEP_ORDER.length-1) h+=ICON.arrow;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function renderDetail(){
+  const car=carById(currentCarId);
+  if(!car){ content.innerHTML=`<div class="empty">ไม่พบใบ CAR</div>`; return; }
+
+  let html=`<button class="back-link" onclick="go(firstAllowedView())">${ICON.back} กลับไปรายการ</button>
+  <div class="detail-head">
+    <div style="flex:1">
+      <div class="car-id">${car.carNo}</div>
+      <div class="meta">${SOURCES[car.sourceType].full} · แจ้งเมื่อ ${fmtDate(car.issueDate)} โดย ${car.reporterName}${car.refOldCarNo?` · อ้างอิงใบเดิม <b class="mono">${car.refOldCarNo}</b>`:''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      ${car.status==="CLOSED"?`<button class="btn btn-sm" onclick="exportCarPDF(${car.id})">${ICON.pdf}Export PDF</button>`:''}
+      <div>${pill(car.status)}</div>
+    </div>
+  </div>`;
+
+  if(car.status==="CLOSED"){
+    html+=`<div class="banner banner-ok">${ICON.check}<div>ใบ CAR นี้ปิดสมบูรณ์แล้ว — สามารถ Export เป็น PDF (รวมส่วนที่ 1, 2 และ 3) เพื่อจัดเก็บหรือส่งต่อได้</div></div>`;
+  }
+
+  if(!["CLOSED","NEW_CAR_ISSUED"].includes(car.status)) html+=stepFlow(car);
+
+  if(car.status==="NEW_CAR_ISSUED"){
+    html+=`<div class="banner banner-warn">${ICON.refresh}<div>ใบนี้ถูกสรุปให้ <b>ออก CAR ใหม่</b> โดยอ้างอิงไปยังใบ <b class="mono">${car.newCarNo}</b> — <a href="#" onclick="const n=cars.find(c=>c.carNo==='${car.newCarNo}');if(n)go('detail',n.id);return false" style="color:inherit;font-weight:700">เปิดใบใหม่</a></div></div>`;
+  }
+
+  const myAction=pendingActionFor(car,currentRoles());
+  if(myAction){
+    html+=`<div class="banner banner-warn">${ICON.info}<div>ใบนี้กำลังรอ <b>${myName()}</b> — ${myAction} (เลื่อนลงไปที่ส่วนที่เกี่ยวข้องด้านล่าง)</div></div>`;
+  }
+
+  /* ===== ส่วนที่ 1 ===== */
+  html+=`<div class="sec"><div class="sec-h done"><span class="num">1</span><div><h4>การแจ้งปัญหาที่พบ</h4><div class="sub">ส่วนที่ 1</div></div>${pill("PENDING_OPEN").replace('รออนุมัติเปิดงาน','บันทึกแล้ว').replace('pill-amber','pill-green')}</div>
+    <div class="sec-body">
+      <div class="disp-grid">
+        <div class="disp"><div class="dl">แหล่งที่มา</div><div class="dv"><span class="src-tag">${car.sourceType}</span> ${SOURCES[car.sourceType].full}</div></div>
+        <div class="disp"><div class="dl">ผู้แจ้ง</div><div class="dv">${car.reporterName} · ${car.reporterEmail}</div></div>
+        <div class="disp"><div class="dl">ลูกค้า / บริษัท / โรงพยาบาล</div><div class="dv ${car.customerName?'':'empty-v'}">${car.customerName||'ไม่ระบุ'}</div></div>
+        <div class="disp"><div class="dl">วันที่แจ้งปัญหา</div><div class="dv">${fmtDate(car.issueDate)}</div></div>
+      </div>
+      <div class="disp"><div class="dl">รายละเอียดปัญหา</div><div class="dv">${escapeHtml(car.problemDetail)}</div></div>
+      <div class="disp"><div class="dl">รูปหลักฐาน</div><div class="dv">${attachRow(car.problemImages)}</div></div>
+    </div></div>`;
+
+  /* ปุ่ม action: DRAFT (แก้ไขส่งใหม่) / PENDING_OPEN (อนุมัติ) */
+  if(car.status==="DRAFT" && iHaveRole("REPORTER")){
+    html+=actionCard("ตีกลับมาให้แก้ไข","banner-warn",
+      lastReject(car,"OPEN"),
+      `<button class="btn btn-primary" onclick="doResubmit(${car.id})">ส่งข้อมูลอีกครั้ง →</button>`);
+  }
+  if(car.status==="PENDING_OPEN" && iHaveRole("REVIEWER")){
+    html+=approveCard(car,"OPEN","อนุมัติเปิดงาน","ตรวจสอบข้อมูลการแจ้ง หากถูกต้องกดอนุมัติเพื่อมอบหมายผู้แก้ไข");
+  }
+
+  /* ===== ส่วนที่ 2 ===== */
+  const s2done=["PENDING_CLOSE","FOLLOW_UP","SUMMARY","CLOSED","NEW_CAR_ISSUED"].includes(car.status);
+  const s2active=car.status==="IN_PROGRESS";
+  const s2cls=s2done?"done":(s2active?"":"wait");
+  html+=`<div class="sec"><div class="sec-h ${s2cls}"><span class="num">2</span><div><h4>การระบุสาเหตุและแนวทางแก้ไข</h4><div class="sub">ส่วนที่ 2 · ผู้แก้ไข</div></div>${s2done?pill("CLOSED").replace('ปิดใบแล้ว','บันทึกแล้ว'):(s2active?pill("IN_PROGRESS"):'<span class="pill pill-gray"><span class="dot"></span>รอขั้นก่อนหน้า</span>')}</div>
+    <div class="sec-body">`;
+  if(s2done){
+    html+=`<div class="disp-grid">
+        <div class="disp"><div class="dl">หน่วยงานที่แก้ไข</div><div class="dv">${car.auditeeDept||'—'}</div></div>
+        <div class="disp"><div class="dl">ผู้แก้ไข</div><div class="dv">${car.auditeeName||'—'}</div></div>
+      </div>
+      <div class="disp"><div class="dl">สาเหตุของปัญหา</div><div class="dv">${escapeHtml(car.rootCause)}</div></div>
+      <div class="disp"><div class="dl">แนวทางการแก้ไขปัญหา</div><div class="dv">${escapeHtml(car.correctiveAction)}</div></div>
+      <div class="disp"><div class="dl">แนวทางการป้องกันการเกิดซ้ำ</div><div class="dv">${escapeHtml(car.preventiveAction)}</div></div>
+      <div class="disp-grid">
+        <div class="disp"><div class="dl">หลักฐานการแก้ไข</div><div class="dv">${attachRow(car.correctionImages)}</div></div>
+        <div class="disp"><div class="dl">วันที่แก้ไขเสร็จ (time stamp)</div><div class="dv">${fmtDateTime(car.fixCompletedAt)}</div></div>
+      </div>`;
+  }else if(s2active && iHaveRole("AUDITEE")){
+    html+=correctionForm(car);
+  }else if(s2active){
+    html+=`<div class="sec-locked">กำลังรอ<b> ผู้แก้ไข </b>กรอกข้อมูลการแก้ไข</div>`;
+  }else{
+    html+=`<div class="sec-locked">ส่วนนี้จะเปิดให้กรอกหลังผ่านการอนุมัติเปิดงาน</div>`;
+  }
+  html+=`</div></div>`;
+
+  if(car.status==="PENDING_CLOSE" && iHaveRole("REVIEWER")){
+    html+=approveCard(car,"CLOSE","อนุมัติปิดงาน","ตรวจสอบผลการแก้ไข หากผ่านกดอนุมัติเพื่อเข้าสู่ขั้นตอนติดตามผล");
+  }
+
+  /* ===== ส่วนที่ 3 ===== */
+  const s3done=["CLOSED","NEW_CAR_ISSUED"].includes(car.status);
+  const s3active=["FOLLOW_UP","SUMMARY"].includes(car.status);
+  const s3cls=s3done?"done":(s3active?"":"wait");
+  html+=`<div class="sec"><div class="sec-h ${s3cls}"><span class="num">3</span><div><h4>การติดตามผลการแก้ไข</h4><div class="sub">ส่วนที่ 3 · ผู้ติดตาม / QMR</div></div>${s3done?pill(car.status):(s3active?pill("FOLLOW_UP"):'<span class="pill pill-gray"><span class="dot"></span>รอขั้นก่อนหน้า</span>')}</div>
+    <div class="sec-body">`;
+
+  // followup list (ถ้ามี)
+  if(car.followups.length>0){
+    html+=`<div class="disp"><div class="dl">ประวัติการติดตาม</div><div class="fu">`;
+    car.followups.forEach(f=>{
+      html+=`<div class="fu-row"><div class="rn">${f.round}</div>
+        <div class="info"><div class="t">ติดตามครั้งที่ ${f.round}</div><div class="d">${fmtDate(f.date)}${f.result?" · "+escapeHtml(f.result):""}${!f.completed&&f.nextDue?" · นัดถัดไป "+fmtDate(f.nextDue):""}</div></div>
+        ${f.completed?'<span class="pill pill-green"><span class="dot"></span>เสร็จ</span>':'<span class="pill pill-amber"><span class="dot"></span>ยังไม่เสร็จ</span>'}</div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  if(s3done){
+    html+=`<div class="disp"><div class="dl">การติดตาม</div><div class="dv">${car.needFollowup?`มีการติดตาม ${car.followups.length} ครั้ง`:'ไม่มีการติดตาม (สรุปปิดโดยตรง)'}</div></div>
+      <div class="disp"><div class="dl">สรุปผลการแก้ไข</div><div class="dv">${escapeHtml(car.finalSummary)||'—'}</div></div>
+      <div class="disp-grid">
+        <div class="disp"><div class="dl">ผลการตัดสิน</div><div class="dv">${car.finalResult==="CLOSE"?'<span class="pill pill-green"><span class="dot"></span>ปิดใบ CAR</span>':'<span class="pill pill-red"><span class="dot"></span>ออก CAR ใหม่ ('+car.newCarNo+')</span>'}</div></div>
+        <div class="disp"><div class="dl">ปิดโดย</div><div class="dv">${car.closedBy} · ${fmtDateTime(car.closedAt)}</div></div>
+      </div>`;
+  }else if(car.status==="FOLLOW_UP" && iHaveRole("QMR")){
+    html+=followupPanel(car);
+  }else if(s3active){
+    html+=`<div class="sec-locked">กำลังรอ<b> ผู้ติดตาม / QMR </b>ดำเนินการติดตามผล</div>`;
+  }else{
+    html+=`<div class="sec-locked">ส่วนนี้จะเปิดหลังผ่านการอนุมัติปิดงาน</div>`;
+  }
+  html+=`</div></div>`;
+
+  /* ===== ประวัติการอนุมัติ + log ===== */
+  html+=`<div class="card card-pad">
+    <h3 style="font-size:14px;margin-bottom:16px">ประวัติการดำเนินการ (audit trail)</h3>`;
+  if(car.approvals.length>0){
+    html+=`<div style="margin-bottom:18px"><div class="dl" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-bottom:10px">การอนุมัติ</div><div class="tl">`;
+    car.approvals.forEach(a=>{
+      const ok=a.result==="APPROVED";
+      html+=`<div class="tl-item ${ok?'ok':'rej'}">
+        <div class="tt">${a.type==="OPEN"?"อนุมัติเปิดงาน":"อนุมัติปิดงาน"} — ${ok?'อนุมัติ':'ตีกลับ'}</div>
+        <div class="td">โดย ${a.by} · ${fmtDateTime(a.at)}</div>
+        ${a.reason?`<div class="tx">เหตุผล: ${escapeHtml(a.reason)}</div>`:''}
+      </div>`;
+    });
+    html+=`</div></div>`;
+  }
+  html+=`<div class="dl" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-bottom:10px">บันทึกการเปลี่ยนแปลง</div><div class="tl">`;
+  car.log.forEach(l=>{
+    html+=`<div class="tl-item"><div class="tt">${escapeHtml(l.text)}</div><div class="td">${l.who} · ${fmtDateTime(l.at)}</div></div>`;
+  });
+  html+=`</div></div>`;
+
+  content.innerHTML=html;
+  if(car.status==="IN_PROGRESS" && iHaveRole("AUDITEE")) renderCorrAttach();
+}
+
+function attachRow(n){
+  if(!n) return '<span style="color:var(--faint)">ไม่มีรูปแนบ</span>';
+  let h='<div style="display:flex;gap:6px">';
+  for(let i=0;i<n;i++) h+=`<div style="width:34px;height:34px;border-radius:6px;background:var(--brand-soft);color:var(--brand-ink);display:flex;align-items:center;justify-content:center">${ICON.photo}</div>`;
+  h+=`</div>`;
+  return h;
+}
+function lastReject(car,type){
+  const a=car.approvals.find(x=>x.type===type&&x.result==="REJECTED");
+  return a?`<b>เหตุผลที่ตีกลับ:</b> ${escapeHtml(a.reason)}`:"กรุณาแก้ไขข้อมูลแล้วส่งอีกครั้ง";
+}
+function actionCard(title,banner,msg,buttons){
+  return `<div class="card card-pad" style="border-color:var(--amber);margin-bottom:16px">
+    <div class="banner ${banner}" style="margin-bottom:14px">${ICON.info}<div>${msg}</div></div>
+    <div class="actions-bar" style="border:none;margin:0;padding:0">${buttons}</div></div>`;
+}
+
+/* อนุมัติ (เปิด/ปิด) */
+function approveCard(car,type,title,desc){
+  let assignField="";
+  if(type==="OPEN"){
+    const auditees=users.filter(u=>u.active && u.roles.includes("AUDITEE"));
+    const opts=auditees.length
+      ? auditees.map(u=>`<option value="${u.id}">${escapeHtml(u.fullName)}${u.department?" · "+escapeHtml(u.department):""}</option>`).join("")
+      : `<option value="">— ยังไม่มีผู้ใช้ที่เป็นผู้แก้ไข —</option>`;
+    assignField=`<div class="field"><label class="req">มอบหมายให้ผู้แก้ไข</label>
+      <select id="assignFixer"><option value="">— เลือกผู้แก้ไข —</option>${opts}</select>
+      <div class="hint" style="margin:6px 0 0">ระบบจะส่งใบให้ผู้แก้ไขที่เลือก และผู้แก้ไขจะเห็นเฉพาะใบที่ได้รับมอบหมาย</div></div>`;
+  }
+  return `<div class="card card-pad" style="border-color:var(--amber);margin-bottom:16px">
+    <h3 style="font-size:14.5px;margin-bottom:4px">${title}</h3>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 14px">${desc}</p>
+    ${assignField}
+    <div class="field"><label>ความเห็น / เหตุผล (กรอกเมื่อตีกลับ)</label>
+      <textarea id="appReason_${type}" rows="2" placeholder="ระบุเหตุผลกรณีตีกลับ"></textarea></div>
+    <div class="actions-bar" style="border:none;margin:0;padding:0">
+      <button class="btn btn-danger" onclick="doReject(${car.id},'${type}')">${ICON.x}ตีกลับ</button>
+      <button class="btn btn-primary" onclick="doApprove(${car.id},'${type}')">${ICON.check}${title}</button>
+    </div></div>`;
+}
+
+/* ฟอร์มส่วนที่ 2 */
+let corrImages=2;
+function correctionForm(car){
+  corrImages=2;
+  return `<div class="field row2" style="display:grid">
+      <div class="field" style="margin:0"><label class="req">หน่วยงานที่แก้ไข</label><input type="text" id="c_dept" placeholder="เช่น ฝ่ายผลิต"></div>
+      <div class="field" style="margin:0"><label class="req">ชื่อผู้แก้ไข</label><input type="text" id="c_name" placeholder="ชื่อ-สกุลผู้แก้ไข"></div>
+    </div>
+    <div class="field"><label class="req">สาเหตุของปัญหา</label><textarea id="c_root" rows="2" placeholder="วิเคราะห์ต้นตอที่แท้จริง"></textarea></div>
+    <div class="field"><label class="req">แนวทางการแก้ไขปัญหา</label><textarea id="c_corr" rows="2" placeholder="วิธีแก้ไขปัญหาเฉพาะหน้า"></textarea></div>
+    <div class="field"><label class="req">แนวทางการป้องกันการเกิดซ้ำ</label><textarea id="c_prev" rows="2" placeholder="มาตรการกันไม่ให้เกิดซ้ำ"></textarea></div>
+    <div class="field"><label>แนบหลักฐานการแก้ไข <span class="hint">(รูปที่แก้แล้ว / email แจ้ง supplier)</span></label>
+      <div class="attach-grid" id="corrAttach"></div></div>
+    <div class="banner banner-mut" style="margin:4px 0 0">${ICON.clock}<div>ระบบจะบันทึกวันที่แก้ไขเสร็จ (time stamp) อัตโนมัติเมื่อกดส่งงาน</div></div>
+    <div class="actions-bar">
+      <button class="btn btn-primary" onclick="doSubmitCorrection(${car.id})">ส่งงานไปผู้อนุมัติ →</button>
+    </div>`;
+}
+function renderCorrAttach(){
+  const g=$("#corrAttach"); if(!g) return;
+  let h="";
+  const icons=[ICON.photo,ICON.mail];
+  for(let i=0;i<5;i++){
+    if(i<corrImages) h+=`<div class="attach filled">${icons[i]||ICON.photo}<span>หลักฐาน ${i+1}</span></div>`;
+    else if(i===corrImages) h+=`<div class="attach add" onclick="if(corrImages<5){corrImages++;renderCorrAttach()}">${ICON.plus}<span>เพิ่ม</span></div>`;
+    else h+=`<div class="attach slot"></div>`;
+  }
+  g.innerHTML=h;
+}
+
+/* Panel ส่วนที่ 3 */
+let fuMode=true, fuCompleted=true, finalChoice="";
+function followupPanel(car){
+  fuMode=true; finalChoice="";
+  return `<div class="banner banner-info" style="margin-top:0">${ICON.info}<div>ถ้าใบนี้ต้องติดตามผล ให้บันทึกการติดตามทีละรอบจนเสร็จ — หากไม่ต้องติดตาม ปิดสวิตช์แล้วให้ QMR สรุปปิดได้เลย</div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--gray-soft);padding:12px 15px;border-radius:var(--radius-sm);margin-bottom:16px">
+      <div><div style="font-weight:600;font-size:13.5px">ต้องมีการติดตามผล</div><div style="font-size:12px;color:var(--muted)">เปิด = บันทึกติดตามหลายรอบ · ปิด = ข้ามไปสรุปปิด</div></div>
+      <div class="toggle on" id="fuToggle" onclick="toggleFu()"><div class="track"><i></i></div></div>
+    </div>
+
+    <div id="fuSection">
+      <div class="field"><label>บันทึกการติดตามรอบใหม่</label></div>
+      <div class="row3">
+        <div class="field"><label>วันที่ติดตาม</label><input type="date" id="fu_date" value="${todayStr()}"></div>
+        <div class="field" style="grid-column:span 2"><label>ผลการติดตาม</label><input type="text" id="fu_result" placeholder="เช่น ตรวจแล้วแก้ไขครบถ้วน"></div>
+      </div>
+      <div class="field">
+        <label class="toggle" style="font-weight:500" id="fuDoneWrap" onclick="toggleFuDone()"><span class="toggle on" style="pointer-events:none" id="fuDoneToggle"><span class="track"><i></i></span></span>&nbsp;แก้ไขเสร็จเรียบร้อยแล้ว</label>
+      </div>
+      <div class="field" id="nextDueWrap" style="display:none"><label>นัดติดตามครั้งถัดไป</label><input type="date" id="fu_next"></div>
+      <div class="actions-bar" style="justify-content:flex-start;border:none;padding:0;margin:0 0 8px">
+        <button class="btn btn-sm" onclick="doAddFollowup(${car.id})">${ICON.plus}บันทึกการติดตามรอบนี้</button>
+      </div>
+      <div class="banner banner-mut">${ICON.info}<div>เมื่อทำเครื่องหมายว่าเสร็จแล้ว จึงจะส่งให้ QMR สรุปปิดได้</div></div>
+    </div>
+
+    <div style="border-top:1px solid var(--line-soft);margin:18px 0;padding-top:18px">
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">สรุปผลและปิดใบ (QMR)</div>
+      <p style="color:var(--muted);font-size:12.5px;margin:0 0 14px">ทำได้เมื่อไม่ต้องติดตาม หรือการติดตามล่าสุดเสร็จแล้ว</p>
+      <div class="field"><label>สรุปผลการแก้ไข</label><textarea id="fin_summary" rows="2" placeholder="สรุปผลและหมายเหตุ"></textarea></div>
+      <div class="field"><label>ผลการตัดสิน</label>
+        <div class="choice-grid">
+          <div class="choice" id="ch_close" onclick="setFinal('CLOSE')">${ICON.check}ปิดใบ CAR</div>
+          <div class="choice" id="ch_new" onclick="setFinal('NEW')">${ICON.refresh}ออก CAR ใหม่</div>
+        </div>
+      </div>
+      <div class="actions-bar">
+        <span class="note" id="finNote"></span>
+        <button class="btn btn-primary" onclick="doFinalize(${car.id})">ยืนยันการสรุปผล →</button>
+      </div>
+    </div>`;
+}
+function toggleFu(){
+  fuMode=!fuMode;
+  $("#fuToggle").classList.toggle("on",fuMode);
+  $("#fuSection").style.display=fuMode?"block":"none";
+}
+function toggleFuDone(){
+  fuCompleted=!fuCompleted;
+  $("#fuDoneToggle").classList.toggle("on",fuCompleted);
+  $("#nextDueWrap").style.display=fuCompleted?"none":"block";
+}
+function setFinal(v){
+  finalChoice=v;
+  $("#ch_close").className="choice"+(v==="CLOSE"?" sel-close":"");
+  $("#ch_new").className="choice"+(v==="NEW"?" sel-new":"");
+}
+
+/* ---- Action handlers ---- */
+function doResubmit(id){ const c=carById(id); resubmitOpen(c); toast("ส่งข้อมูลอีกครั้งแล้ว",true); render(); }
+function doApprove(id,type){
+  const c=carById(id);
+  if(type==="OPEN"){
+    const fixerId=parseInt(($("#assignFixer")||{}).value)||null;
+    if(!fixerId){ toast("กรุณาเลือกผู้แก้ไขก่อนอนุมัติ",false); return; }
+    approveOpen(c,myName(),fixerId);
+    toast("อนุมัติและมอบหมายผู้แก้ไขแล้ว",true);
+  }else{
+    approveClose(c,myName());
+    toast("อนุมัติผลการแก้ไขแล้ว",true);
+  }
+  render();
+}
+function doReject(id,type){
+  const c=carById(id);
+  const reason=($("#appReason_"+type)||{}).value?.trim();
+  if(!reason){ toast("กรุณาระบุเหตุผลในการตีกลับ",false); return; }
+  if(type==="OPEN") rejectOpen(c,myName(),reason); else rejectClose(c,myName(),reason);
+  toast("ตีกลับใบ CAR แล้ว",true); render();
+}
+function doSubmitCorrection(id){
+  const c=carById(id);
+  const dept=$("#c_dept").value.trim(),name=$("#c_name").value.trim();
+  const root=$("#c_root").value.trim(),corr=$("#c_corr").value.trim(),prev=$("#c_prev").value.trim();
+  if(!dept||!name||!root||!corr||!prev){ toast("กรุณากรอกข้อมูลการแก้ไขให้ครบ",false); return; }
+  submitCorrection(c,{auditeeDept:dept,auditeeName:name,rootCause:root,correctiveAction:corr,preventiveAction:prev,correctionImages:corrImages});
+  toast("ส่งงานแก้ไขแล้ว — รอผู้อนุมัติปิดงาน",true); render();
+}
+function doAddFollowup(id){
+  const c=carById(id);
+  const date=$("#fu_date").value, result=$("#fu_result").value.trim();
+  if(!result){ toast("กรุณากรอกผลการติดตาม",false); return; }
+  addFollowup(c,{date,result,completed:fuCompleted,nextDue:fuCompleted?"":$("#fu_next").value});
+  toast(`บันทึกการติดตามครั้งที่ ${c.followups.length} แล้ว`,true);
+  fuCompleted=true; render();
+}
+function doFinalize(id){
+  const c=carById(id);
+  if(!finalChoice){ toast("กรุณาเลือกผลการตัดสิน (ปิด หรือ ออกใหม่)",false); return; }
+  if(fuMode && c.followups.length>0 && !c.followups[c.followups.length-1].completed){
+    toast("การติดตามล่าสุดยังไม่เสร็จ ไม่สามารถปิดได้",false); return;
+  }
+  const summary=$("#fin_summary").value.trim();
+  openModal({
+    title: finalChoice==="CLOSE"?"ยืนยันปิดใบ CAR":"ยืนยันออก CAR ใหม่",
+    body: finalChoice==="CLOSE"
+      ? `ปิดใบ <b class="mono">${c.carNo}</b> อย่างสมบูรณ์ · การกระทำนี้จะสรุปกระบวนการทั้งหมด`
+      : `ปิดใบเดิมและสร้างใบ CAR ใหม่ (ประเภท ${c.sourceType}) โดยอ้างอิงกลับมายังใบ <b class="mono">${c.carNo}</b>`,
+    confirmLabel: finalChoice==="CLOSE"?"ปิดใบ CAR":"ออกใบใหม่",
+    onConfirm:()=>{
+      finalizeCar(c,{summary,result:finalChoice==="CLOSE"?"CLOSE":"NEW"});
+      closeModal();
+      toast(finalChoice==="CLOSE"?"ปิดใบ CAR เรียบร้อย":"ออก CAR ใหม่แล้ว: "+c.newCarNo,true);
+      render();
+    }
+  });
+}
+
+/* ---- Export PDF (รวมส่วนที่ 1,2,3 ในรูปแบบฟอร์ม) ---- */
+function exportCarPDF(id){
+  const car=carById(id);
+  if(!car){ toast("ไม่พบใบ CAR",false); return; }
+
+  const imgCells=(n,label)=> n>0
+    ? `<div class="pdf-imgrow">${Array.from({length:n}).map((_,i)=>`<div class="pdf-imgbox">${label} ${i+1}</div>`).join("")}</div>`
+    : `<div class="pdf-muted">— ไม่มีรูปแนบ —</div>`;
+
+  // ประวัติการอนุมัติ
+  let approvalRows = car.approvals.length
+    ? car.approvals.slice().reverse().map(a=>`<tr>
+        <td>${a.type==="OPEN"?"อนุมัติเปิดงาน":"อนุมัติปิดงาน"}</td>
+        <td>${a.result==="APPROVED"?"อนุมัติ":"ตีกลับ"}</td>
+        <td>${esc(a.by)}</td>
+        <td>${fmtDateTime(a.at)}</td>
+        <td>${esc(a.reason)||"—"}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="5" class="pdf-muted">ไม่มีประวัติการอนุมัติ</td></tr>`;
+
+  // ตารางติดตาม
+  let followRows = car.followups.length
+    ? car.followups.map(f=>`<tr>
+        <td style="text-align:center">${f.round}</td>
+        <td>${fmtDate(f.date)}</td>
+        <td>${esc(f.result)||"—"}</td>
+        <td style="text-align:center">${f.completed?"เสร็จ":"ยังไม่เสร็จ"}</td>
+        <td>${f.nextDue?fmtDate(f.nextDue):"—"}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="5" class="pdf-muted">ไม่มีการติดตาม (สรุปปิดโดยตรง)</td></tr>`;
+
+  function esc(s){ return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  const doc=`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
+  <title>CAR ${car.carNo}</title>
+  <style>
+    @page{size:A4;margin:14mm 14mm 16mm}
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{font-family:"Sarabun","TH Sarabun New",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1a1a1a;font-size:12px;line-height:1.5;margin:0}
+    .doc{max-width:186mm;margin:0 auto}
+    .head{display:flex;align-items:center;border:1.5px solid #1a1a1a;border-bottom:none}
+    .head .logo{width:52px;height:52px;background:#1f6f5c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;border-right:1.5px solid #1a1a1a;flex-shrink:0}
+    .head .htitle{flex:1;text-align:center;padding:6px}
+    .head .htitle .th{font-size:16px;font-weight:800}
+    .head .htitle .en{font-size:11px;color:#444;letter-spacing:.05em}
+    .head .hno{width:150px;border-left:1.5px solid #1a1a1a;padding:6px 10px;flex-shrink:0}
+    .head .hno .l{font-size:9px;color:#555}
+    .head .hno .v{font-size:15px;font-weight:800;font-family:monospace;letter-spacing:.05em}
+    table.frame{width:100%;border-collapse:collapse;border:1.5px solid #1a1a1a}
+    .band{background:#eef2f0;font-weight:800;font-size:12px;padding:4px 8px;border-bottom:1px solid #1a1a1a;border-top:1px solid #1a1a1a}
+    .kv{padding:5px 8px;border-bottom:1px solid #ccc;vertical-align:top}
+    .kl{font-size:10px;color:#555;display:block;margin-bottom:1px}
+    .kvv{font-size:12px;white-space:pre-wrap}
+    .grid2{display:grid;grid-template-columns:1fr 1fr}
+    .grid2>div{padding:5px 8px;border-bottom:1px solid #ccc}
+    .grid2>div:nth-child(odd){border-right:1px solid #ccc}
+    .cell{padding:5px 8px;border-bottom:1px solid #ccc}
+    .sig{color:#777;font-size:9px;text-align:right;padding:2px 8px 5px;font-style:italic}
+    .pdf-imgrow{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
+    .pdf-imgbox{width:64px;height:44px;border:1px solid #aaa;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#888;background:#f5f5f5}
+    .pdf-muted{color:#999;font-style:italic;font-size:11px}
+    table.sub{width:100%;border-collapse:collapse;margin-top:2px}
+    table.sub th{background:#f2f4f3;border:1px solid #bbb;padding:3px 6px;font-size:10px;text-align:left}
+    table.sub td{border:1px solid #ccc;padding:3px 6px;font-size:11px}
+    .status-final{margin-top:3px;padding:4px 8px;background:#e4f4ea;border:1px solid #2f8a5b;border-radius:4px;font-weight:700;color:#1f6a44;display:inline-block}
+    .footer{margin-top:8px;display:flex;justify-content:space-between;font-size:9px;color:#777}
+    .stamp{margin-top:10px;text-align:center;padding:6px;border:1.5px dashed #2f8a5b;color:#1f6a44;font-weight:800;font-size:13px;border-radius:5px}
+    @media print{.noprint{display:none}}
+  </style></head><body>
+  <div class="doc">
+    <div class="head">
+      <div class="logo">S</div>
+      <div class="htitle"><div class="th">ใบร้องขอให้แก้ไข</div><div class="en">CORRECTIVE ACTION REQUEST (CAR)</div></div>
+      <div class="hno"><span class="l">CAR NO.</span><span class="v">${car.carNo}</span></div>
+    </div>
+    <table class="frame">
+      <tr><td class="band">ส่วนที่ 1 · การแจ้งปัญหาที่พบ</td></tr>
+      <tr><td style="padding:0">
+        <div class="grid2">
+          <div><span class="kl">แหล่งที่มาของปัญหา</span>${SOURCES[car.sourceType].full} (${car.sourceType})</div>
+          <div><span class="kl">วันที่แจ้งปัญหา</span>${fmtDate(car.issueDate)}</div>
+          <div><span class="kl">ผู้แจ้ง</span>${esc(car.reporterName)}</div>
+          <div><span class="kl">Email ผู้แจ้ง</span>${esc(car.reporterEmail)}</div>
+          <div><span class="kl">ลูกค้า / บริษัท / โรงพยาบาล</span>${esc(car.customerName)||"—"}</div>
+          <div><span class="kl">อ้างอิงใบเดิม</span>${car.refOldCarNo||"—"}</div>
+        </div>
+        <div class="cell"><span class="kl">รายละเอียดปัญหา</span><div class="kvv">${esc(car.problemDetail)}</div></div>
+        <div class="cell" style="border-bottom:none"><span class="kl">รูปหลักฐาน (ส่วนที่ 1)</span>${imgCells(car.problemImages,"รูป")}</div>
+        <div class="sig">ผู้แจ้ง / Auditor: ${esc(car.reporterName)}</div>
+      </td></tr>
+
+      <tr><td class="band">ส่วนที่ 2 · การระบุสาเหตุและแนวทางแก้ไข</td></tr>
+      <tr><td style="padding:0">
+        <div class="grid2">
+          <div><span class="kl">หน่วยงานที่แก้ไข</span>${esc(car.auditeeDept)||"—"}</div>
+          <div><span class="kl">ผู้แก้ไข</span>${esc(car.auditeeName)||"—"}</div>
+        </div>
+        <div class="cell"><span class="kl">สาเหตุของปัญหา</span><div class="kvv">${esc(car.rootCause)||"—"}</div></div>
+        <div class="cell"><span class="kl">แนวทางการแก้ไขปัญหา</span><div class="kvv">${esc(car.correctiveAction)||"—"}</div></div>
+        <div class="cell"><span class="kl">แนวทางการป้องกันการเกิดซ้ำ</span><div class="kvv">${esc(car.preventiveAction)||"—"}</div></div>
+        <div class="grid2">
+          <div><span class="kl">หลักฐานการแก้ไข</span>${imgCells(car.correctionImages,"หลักฐาน")}</div>
+          <div><span class="kl">วันที่แก้ไขเสร็จ (time stamp)</span>${fmtDateTime(car.fixCompletedAt)}</div>
+        </div>
+        <div class="sig">ผู้แก้ไข / Auditee: ${esc(car.auditeeName)||"—"}</div>
+      </td></tr>
+
+      <tr><td class="band">ส่วนที่ 3 · การติดตามผลการแก้ไข</td></tr>
+      <tr><td style="padding:5px 8px">
+        <span class="kl">การติดตามผล</span>
+        <table class="sub">
+          <tr><th style="width:34px;text-align:center">ครั้งที่</th><th style="width:80px">วันที่</th><th>ผลการติดตาม</th><th style="width:70px;text-align:center">สถานะ</th><th style="width:80px">นัดครั้งถัดไป</th></tr>
+          ${followRows}
+        </table>
+        <div class="cell" style="border:none;padding-left:0;margin-top:5px"><span class="kl">สรุปผลการแก้ไข</span><div class="kvv">${esc(car.finalSummary)||"—"}</div></div>
+        <div class="status-final">ผลการตัดสิน: ปิดใบ CAR</div>
+        <div class="sig">สรุปและปิดโดย QMR: ${esc(car.closedBy)} · ${fmtDateTime(car.closedAt)}</div>
+      </td></tr>
+
+      <tr><td class="band">ประวัติการอนุมัติ (Audit Trail)</td></tr>
+      <tr><td style="padding:5px 8px">
+        <table class="sub">
+          <tr><th>ประเภท</th><th style="width:60px">ผล</th><th style="width:110px">ผู้ดำเนินการ</th><th style="width:110px">วันที่-เวลา</th><th>เหตุผล (ถ้าตีกลับ)</th></tr>
+          ${approvalRows}
+        </table>
+      </td></tr>
+    </table>
+
+    <div class="stamp">✓ ปิดใบ CAR สมบูรณ์แล้ว</div>
+    <div class="footer"><span>FM-QMS-05-01 Rev.00</span><span>พิมพ์เมื่อ ${fmtDateTime(nowStr())}</span></div>
+  </div>
+  <script>window.onload=function(){setTimeout(function(){window.print();},350);};<\/script>
+  </body></html>`;
+
+  const w=window.open("","_blank");
+  if(!w){ toast("เบราว์เซอร์บล็อก popup — กรุณาอนุญาต popup แล้วลองใหม่",false); return; }
+  w.document.open(); w.document.write(doc); w.document.close();
+  toast("เปิดหน้าพิมพ์ PDF แล้ว — เลือก 'Save as PDF'",true);
+}
+
+/* ---- Modal ---- */
+function openModal({title,body,confirmLabel,onConfirm}){
+  $("#modalHost").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-h"><h3>${title}</h3></div>
+      <div class="modal-b">${body}</div>
+      <div class="modal-f">
+        <button class="btn" onclick="closeModal()">ยกเลิก</button>
+        <button class="btn btn-primary" id="modalConfirm">${confirmLabel}</button>
+      </div>
+    </div></div>`;
+  $("#modalConfirm").onclick=onConfirm;
+}
+function closeModal(){ $("#modalHost").innerHTML=""; }
+
+/* ---- Toast ---- */
+function toast(msg,ok){
+  const el=document.createElement("div");
+  el.className="toast";
+  el.innerHTML=`${ok?ICON.check:ICON.info} ${msg}`;
+  if(!ok) el.style.background="var(--red)";
+  $("#toastWrap").appendChild(el);
+  setTimeout(()=>{el.style.opacity="0";el.style.transform="translateY(10px)";el.style.transition="all .2s";setTimeout(()=>el.remove(),200)},2600);
+}
+
+function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ---- User switch (เข้าใช้งานในนามผู้ใช้) ---- */
+function refreshUserSwitch(){
+  const sel=$("#userSwitch");
+  if(!sel) return;
+  // ถ้ายังไม่มีผู้ใช้ปัจจุบัน หรือผู้ใช้ถูกลบ ให้เลือกคนแรก
+  if(currentUserId==null || !userById(currentUserId)){
+    currentUserId = users.length?users[0].id:null;
+  }
+  sel.innerHTML = users.length
+    ? users.map(u=>`<option value="${u.id}" ${u.id===currentUserId?'selected':''}>${escapeHtml(u.fullName)}${u.active?'':' (ปิดใช้งาน)'}</option>`).join("")
+    : `<option value="">— ยังไม่มีผู้ใช้ —</option>`;
+  refreshWhoRoles();
+}
+function refreshWhoRoles(){
+  const el=$("#whoRoles"); if(!el) return;
+  const roles=currentRoles();
+  el.innerHTML = roles.length
+    ? roles.map(c=>pill_role(c)).join("")
+    : `<span class="none">ผู้ใช้นี้ยังไม่มีสิทธิ์</span>`;
+}
+document.addEventListener("change",e=>{
+  if(e.target && e.target.id==="userSwitch"){
+    currentUserId = parseInt(e.target.value)||null;
+    refreshWhoRoles();
+    updateCounts();
+    render();
+  }
+});
+
+/* ---- Nav menu clicks ---- */
+document.querySelectorAll("#nav a").forEach(a=>{
+  a.addEventListener("click",e=>{
+    e.preventDefault();
+    go(a.dataset.view);
+  });
+});
+
+/* ---- Demo seed ---- */
+function seedDemo(){
+  // ใบ 1: ปิดแล้ว — แจ้งโดยภคพร(1) แก้โดยภูริตาสินี(2)
+  const c1=createCar({sourceType:"C",reporterId:1,reporterName:"ภคพร เปลี่ยนจรูญ",reporterEmail:"pakaphorn@samh.co.th",customerName:"โรงพยาบาลกรุงเทพ",issueDate:"2026-06-12",problemDetail:"ลูกค้าแจ้งว่าฉลากบนกล่องผลิตภัณฑ์ล็อต 2026-0512 พิมพ์วันหมดอายุไม่ชัดเจน อ่านยาก",problemImages:3});
+  approveOpen(c1,"พัชรินทร์ สมเพชร",2);
+  submitCorrection(c1,{auditeeDept:"เซอร์วิสเอ็นจิเนีย",auditeeName:"ภูริตาสินี ศรีวิชัย",rootCause:"หัวพิมพ์วันที่สึกหรอ ไม่ได้อยู่ในรอบบำรุงรักษา",correctiveAction:"เปลี่ยนหัวพิมพ์ใหม่ และพิมพ์ฉลากล็อตที่มีปัญหาซ้ำทั้งหมด",preventiveAction:"เพิ่มการตรวจหัวพิมพ์เข้าในเช็คลิสต์ประจำวัน และตั้งรอบเปลี่ยนทุก 3 เดือน",correctionImages:2});
+  approveClose(c1,"พัชรินทร์ สมเพชร");
+  finalizeCar(c1,{summary:"แก้ไขครบถ้วน มีมาตรการป้องกันชัดเจน",result:"CLOSE"});
+
+  // ใบ 2: รออนุมัติผล — แจ้งโดยภคพร(1) แก้โดยอับดุลเลาะ(3)
+  const c2=createCar({sourceType:"N",reporterId:1,reporterName:"ภคพร เปลี่ยนจรูญ",reporterEmail:"pakaphorn@samh.co.th",customerName:"—",issueDate:"2026-06-28",problemDetail:"พบสินค้าไม่ผ่านเกณฑ์ (NCR) ในขั้นตอน QC รอบสุดท้าย จำนวน 12 ชิ้นจากล็อต 2026-0628",problemImages:2});
+  approveOpen(c2,"พัชรินทร์ สมเพชร",3);
+  submitCorrection(c2,{auditeeDept:"เซอร์วิสเอ็นจิเนีย",auditeeName:"อับดุลเลาะ อภิบาลบำรุง",rootCause:"เครื่องจักรตั้งค่าความดันคลาดเคลื่อนหลังเปลี่ยนกะ",correctiveAction:"คัดแยกของเสีย 12 ชิ้นออก และตั้งค่าเครื่องใหม่ตามมาตรฐาน",preventiveAction:"เพิ่มขั้นตอนตรวจสอบค่าเครื่องเมื่อเปลี่ยนกะทุกครั้ง",correctionImages:1});
+
+  // ใบ 3: รอตรวจสอบ — แจ้งโดยภคพร(1) ยังไม่มอบหมาย
+  createCar({sourceType:"I",reporterId:1,reporterName:"ภคพร เปลี่ยนจรูญ",reporterEmail:"pakaphorn@samh.co.th",customerName:"—",issueDate:"2026-07-02",problemDetail:"จากการตรวจติดตามภายใน พบว่าเอกสารคู่มือปฏิบัติงานแผนกคลังสินค้าไม่ได้อัปเดตตามรอบที่กำหนด",problemImages:1});
+
+  // ใบ 4: กำลังแก้ไข — แจ้งโดยภัควรินทร์(6) แก้โดยปัญญา(9)
+  const c4=createCar({sourceType:"O",reporterId:6,reporterName:"ภัควรินทร์ พัชรกุลธนวิทย์",reporterEmail:"phakwarin@samh.co.th",customerName:"—",issueDate:"2026-07-03",problemDetail:"พบว่าการบันทึกเวลาเข้า-ออกของพนักงานคลาดเคลื่อนจากระบบสแกนนิ้วที่ประตู 2",problemImages:0});
+  approveOpen(c4,"สรธัญ พิทักษ์วนาราษฎร์",9);
+
+  toast("โหลดตัวอย่างข้อมูล 4 ใบแล้ว",true);
+  go(firstAllowedView());
+}
+
+/* ---- init ---- */
+seedUsers();
+currentUserId = users.length?users[0].id:null;
+refreshUserSwitch();
+go(firstAllowedView());
+</script>
+</body>
+</html>
