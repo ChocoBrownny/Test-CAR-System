@@ -707,33 +707,243 @@ function renderAuditLog(){
 }
 
 /* ---- Report (placeholder) ---- */
+/* ---- Report: แยกตาม role ---- */
+let reportView=null; // 'QMR' | 'ADMIN' — สำหรับผู้ถือทั้งสอง role
 function renderReport(){
+  const canQMR = iHaveRole("QMR") || iHaveRole("REVIEWER");
+  const canAdmin = iHaveRole("ADMIN");
+  // เลือกมุมมองเริ่มต้น
+  let view = reportView;
+  if(!view) view = canQMR ? "QMR" : (canAdmin ? "ADMIN" : "QMR");
+  if(view==="QMR" && !canQMR) view="ADMIN";
+  if(view==="ADMIN" && !canAdmin) view="QMR";
+
+  let html="";
+  // ปุ่มสลับมุมมอง เฉพาะผู้ที่ถือทั้งสองฝั่ง
+  if(canQMR && canAdmin){
+    html+=`<div class="ftabs" style="margin-bottom:16px">
+      <button class="ftab ${view==='QMR'?'active':''}" onclick="reportView='QMR';render()">รายงานคุณภาพ (QMR)</button>
+      <button class="ftab ${view==='ADMIN'?'active':''}" onclick="reportView='ADMIN';render()">รายงานระบบ (Admin)</button>
+    </div>`;
+  }
+  html += view==="ADMIN" ? reportAdmin() : reportQMR();
+  content.innerHTML=html;
+}
+
+/* คำนวณเวลาทำการ/วันระหว่าง 2 timestamp (วันปฏิทินอย่างง่าย) */
+function daysBetween(a,b){
+  if(!a||!b) return null;
+  const d1=new Date(a.slice(0,10)), d2=new Date(b.slice(0,10));
+  return Math.round((d2-d1)/86400000);
+}
+function monthKey(s){ return s?s.slice(0,7):""; }
+
+/* ===== รายงานคุณภาพ (QMR) ===== */
+function reportQMR(){
   const total=cars.length;
-  const closed=cars.filter(c=>c.status==="CLOSED").length;
-  const open=cars.filter(c=>!["CLOSED","NEW_CAR_ISSUED"].includes(c.status)).length;
-  const bySource={I:0,N:0,C:0,O:0};
-  cars.forEach(c=>bySource[c.sourceType]=(bySource[c.sourceType]||0)+1);
-  content.innerHTML=`
-  <div class="banner banner-info" style="margin-bottom:16px">${ICON.info}<div>หน้ารายงานภาพรวม สำหรับผู้ตรวจสอบ, QMR และ Admin — ส่วนนี้เป็นโครงเริ่มต้น พร้อมต่อยอดกราฟและสรุปเชิงลึกในรอบถัดไป</div></div>
+  const closed=cars.filter(c=>c.status==="CLOSED");
+  const open=cars.filter(c=>!["CLOSED","NEW_CAR_ISSUED"].includes(c.status));
+  const reissued=cars.filter(c=>c.status==="NEW_CAR_ISSUED").length;
+  const closeRate=total?Math.round(closed.length/total*100):0;
+
+  // เวลาเฉลี่ยในการปิด (วัน)
+  const durations=closed.map(c=>daysBetween(c.createdAt,c.closedAt)).filter(d=>d!=null&&d>=0);
+  const avgDays=durations.length?Math.round(durations.reduce((a,b)=>a+b,0)/durations.length):null;
+
+  // แนวโน้มรายเดือน: เปิด vs ปิด
+  const months={};
+  cars.forEach(c=>{ const k=monthKey(c.createdAt); if(k) (months[k]=months[k]||{open:0,closed:0}).open++; });
+  closed.forEach(c=>{ const k=monthKey(c.closedAt); if(k){ months[k]=months[k]||{open:0,closed:0}; months[k].closed++; } });
+  const monthKeys=Object.keys(months).sort().slice(-6);
+
+  // กระจายตามสถานะ
+  const byStatus={}; STEP_ORDER.forEach(s=>byStatus[s]=0);
+  cars.forEach(c=>byStatus[c.status]=(byStatus[c.status]||0)+1);
+
+  // Pareto หน่วยงานที่มี CAR มากสุด (จากหน่วยงานผู้แก้ไข)
+  const byDept={};
+  cars.forEach(c=>{ if(c.auditeeDept){ byDept[c.auditeeDept]=(byDept[c.auditeeDept]||0)+1; } });
+  const deptRank=Object.entries(byDept).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // ใบคงค้างที่ยังไม่ปิด เรียงตามเก่าสุด
+  const aging=open.map(c=>({car:c,age:daysBetween(c.createdAt,nowStr())})).filter(x=>x.age!=null).sort((a,b)=>b.age-a.age).slice(0,5);
+
+  let html=`<div class="banner banner-info" style="margin-bottom:16px">${ICON.info}<div>รายงานเชิงคุณภาพสำหรับ QMR — ภาพรวมประสิทธิภาพการแก้ไข แนวโน้ม และใบคงค้าง (คำนวณจากข้อมูลที่มีในระบบ)</div></div>
+
   <div class="stats">
-    <div class="stat"><div class="n">${total}</div><div class="l">ใบ CAR ทั้งหมด</div></div>
-    <div class="stat"><div class="n" style="color:var(--blue)">${open}</div><div class="l">กำลังดำเนินการ</div></div>
-    <div class="stat"><div class="n" style="color:var(--green)">${closed}</div><div class="l">ปิดแล้ว</div></div>
-    <div class="stat"><div class="n">${total?Math.round(closed/total*100):0}%</div><div class="l">อัตราปิดสำเร็จ</div></div>
-  </div>
-  <div class="card card-pad">
-    <h3 style="font-size:14px;margin-bottom:14px">จำนวนใบ CAR ตามแหล่งที่มา</h3>
-    <div style="display:flex;flex-direction:column;gap:9px">
-      ${Object.entries(bySource).map(([k,n])=>{
-        const pct=total?Math.round(n/total*100):0;
-        return `<div style="display:flex;align-items:center;gap:12px">
-          <div style="width:150px;flex-shrink:0"><span class="src-tag">${k}</span> <span style="font-size:12.5px;color:var(--ink-soft)">${SOURCES[k].label}</span></div>
-          <div style="flex:1;height:8px;background:var(--line-soft);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:var(--brand);border-radius:4px"></i></div>
-          <div style="width:34px;text-align:right;font-weight:700;font-size:13px">${n}</div>
-        </div>`;
-      }).join("")}
-    </div>
+    <div class="stat"><div class="n">${total}</div><div class="l">CAR ทั้งหมด</div></div>
+    <div class="stat"><div class="n" style="color:var(--green)">${closeRate}%</div><div class="l">อัตราปิดสำเร็จ</div></div>
+    <div class="stat"><div class="n">${avgDays!=null?avgDays:"—"}</div><div class="l">วันเฉลี่ยในการปิด</div></div>
+    <div class="stat"><div class="n" style="color:${reissued?'var(--red)':'inherit'}">${reissued}</div><div class="l">ออก CAR ใหม่ (เกิดซ้ำ)</div></div>
   </div>`;
+
+  // แนวโน้มรายเดือน
+  html+=`<div class="card card-pad" style="margin-bottom:16px">
+    <h3 style="font-size:14px;margin-bottom:4px">แนวโน้มรายเดือน — เปิด vs ปิด</h3>
+    <p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">6 เดือนล่าสุด</p>`;
+  if(monthKeys.length===0){
+    html+=`<div style="color:var(--muted);font-size:13px">ยังไม่มีข้อมูลเพียงพอ</div>`;
+  }else{
+    const maxV=Math.max(1,...monthKeys.map(k=>Math.max(months[k].open,months[k].closed)));
+    html+=`<div style="display:flex;align-items:flex-end;gap:16px;height:150px;padding-top:10px">`;
+    monthKeys.forEach(k=>{
+      const o=months[k].open, c=months[k].closed;
+      const oh=Math.round(o/maxV*120), ch=Math.round(c/maxV*120);
+      const [yy,mm]=k.split("-");
+      html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div style="display:flex;align-items:flex-end;gap:4px;height:120px">
+          <div title="เปิด ${o}" style="width:16px;height:${oh}px;background:var(--blue);border-radius:3px 3px 0 0"></div>
+          <div title="ปิด ${c}" style="width:16px;height:${ch}px;background:var(--green);border-radius:3px 3px 0 0"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted)">${mm}/${yy.slice(2)}</div>
+      </div>`;
+    });
+    html+=`</div>
+    <div style="display:flex;gap:16px;margin-top:12px;font-size:12px;color:var(--ink-soft)">
+      <span><i style="display:inline-block;width:10px;height:10px;background:var(--blue);border-radius:2px;vertical-align:middle;margin-right:5px"></i>เปิดใหม่</span>
+      <span><i style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;vertical-align:middle;margin-right:5px"></i>ปิดสำเร็จ</span>
+    </div>`;
+  }
+  html+=`</div>`;
+
+  // 2 คอลัมน์: สถานะ + Pareto หน่วยงาน
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">`;
+  // สถานะ
+  html+=`<div class="card card-pad"><h3 style="font-size:14px;margin-bottom:14px">CAR ตามสถานะ</h3><div style="display:flex;flex-direction:column;gap:8px">`;
+  STEP_ORDER.concat(["NEW_CAR_ISSUED"]).forEach(s=>{
+    const n=byStatus[s]||0; if(n===0&&s!=="CLOSED") return;
+    const pct=total?Math.round(n/total*100):0;
+    html+=`<div style="display:flex;align-items:center;gap:10px">
+      <div style="width:110px;flex-shrink:0">${pill(s)}</div>
+      <div style="flex:1;height:7px;background:var(--line-soft);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:var(--brand);border-radius:4px"></i></div>
+      <div style="width:26px;text-align:right;font-weight:700;font-size:12.5px">${n}</div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+  // Pareto หน่วยงาน
+  html+=`<div class="card card-pad"><h3 style="font-size:14px;margin-bottom:14px">หน่วยงานที่มี CAR มากสุด</h3>`;
+  if(deptRank.length===0){ html+=`<div style="color:var(--muted);font-size:13px">ยังไม่มีข้อมูลหน่วยงาน</div>`; }
+  else{
+    const maxD=deptRank[0][1];
+    html+=`<div style="display:flex;flex-direction:column;gap:9px">`;
+    deptRank.forEach(([d,n])=>{
+      const pct=Math.round(n/maxD*100);
+      html+=`<div style="display:flex;align-items:center;gap:10px">
+        <div style="width:120px;flex-shrink:0;font-size:12.5px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(d)}">${escapeHtml(d)}</div>
+        <div style="flex:1;height:7px;background:var(--line-soft);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:var(--amber);border-radius:4px"></i></div>
+        <div style="width:26px;text-align:right;font-weight:700;font-size:12.5px">${n}</div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  html+=`</div></div>`;
+
+  // ใบคงค้างเก่าสุด
+  html+=`<div class="tbl-wrap"><div class="tbl-head"><h3>ใบคงค้างที่ยังไม่ปิด (เรียงตามเก่าสุด)</h3></div>`;
+  if(aging.length===0){
+    html+=`<div class="empty"><div class="big">ไม่มีใบคงค้าง</div><div>ทุกใบถูกปิดเรียบร้อยแล้ว</div></div>`;
+  }else{
+    html+=`<table><thead><tr><th>CAR No.</th><th>สถานะ</th><th>ผู้แก้ไข</th><th>อายุ (วัน)</th></tr></thead><tbody>`;
+    aging.forEach(({car,age})=>{
+      const warn=age>=30;
+      html+=`<tr onclick="go('detail',${car.id})">
+        <td class="mono" style="font-weight:600">${car.carNo}</td>
+        <td>${pill(car.status)}</td>
+        <td style="color:var(--ink-soft)">${escapeHtml(car.auditeeName)||'—'}</td>
+        <td style="font-weight:700;color:${warn?'var(--red)':'inherit'}">${age}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+
+/* ===== รายงานระบบ (Admin) ===== */
+function reportAdmin(){
+  const activeUsers=users.filter(u=>u.active).length;
+  const inactiveUsers=users.length-activeUsers;
+  // จำนวนผู้ใช้ตามบทบาท
+  const roleCounts={};
+  ["REPORTER","REVIEWER","AUDITEE","QMR","ADMIN"].forEach(r=>roleCounts[r]=usersWithRole(r).length);
+
+  // ภาระงานผู้แก้ไข: นับใบที่ fixerId = ผู้ใช้ และยังไม่ปิด
+  const auditees=users.filter(u=>u.roles.includes("AUDITEE"));
+  const workload=auditees.map(u=>{
+    const assigned=cars.filter(c=>c.fixerId===u.id);
+    const openCount=assigned.filter(c=>!["CLOSED","NEW_CAR_ISSUED"].includes(c.status)).length;
+    return {user:u,total:assigned.length,open:openCount};
+  }).sort((a,b)=>b.open-a.open);
+
+  // ภาระงานผู้แจ้ง
+  const reporters=users.filter(u=>u.roles.includes("REPORTER"));
+  const reporterLoad=reporters.map(u=>({user:u,count:cars.filter(c=>c.reporterId===u.id).length})).sort((a,b)=>b.count-a.count);
+
+  // กิจกรรมล่าสุดจาก log
+  const events=[];
+  cars.forEach(c=>c.log.forEach(l=>events.push({car:c.carNo,text:l.text,who:l.who,at:l.at})));
+  events.sort((a,b)=>b.at.localeCompare(a.at));
+  const recent=events.slice(0,8);
+
+  let html=`<div class="banner banner-info" style="margin-bottom:16px">${ICON.info}<div>รายงานเชิงระบบสำหรับ Admin — ภาพรวมผู้ใช้งาน ภาระงาน และกิจกรรมในระบบ</div></div>
+
+  <div class="stats">
+    <div class="stat"><div class="n">${users.length}</div><div class="l">ผู้ใช้ทั้งหมด</div></div>
+    <div class="stat"><div class="n" style="color:var(--green)">${activeUsers}</div><div class="l">ใช้งานอยู่</div></div>
+    <div class="stat"><div class="n" style="color:${inactiveUsers?'var(--muted)':'inherit'}">${inactiveUsers}</div><div class="l">ปิดใช้งาน</div></div>
+    <div class="stat"><div class="n">${cars.length}</div><div class="l">CAR ในระบบ</div></div>
+  </div>`;
+
+  // จำนวนผู้ใช้ตามบทบาท
+  html+=`<div class="card card-pad" style="margin-bottom:16px">
+    <h3 style="font-size:14px;margin-bottom:14px">จำนวนผู้ใช้ตามบทบาท</h3>
+    <div style="display:flex;flex-direction:column;gap:9px">`;
+  const maxR=Math.max(1,...Object.values(roleCounts));
+  ["REPORTER","REVIEWER","AUDITEE","QMR","ADMIN"].forEach(r=>{
+    const n=roleCounts[r], pct=Math.round(n/maxR*100);
+    html+=`<div style="display:flex;align-items:center;gap:10px">
+      <div style="width:110px;flex-shrink:0">${pill_role(r)}</div>
+      <div style="flex:1;height:7px;background:var(--line-soft);border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${pct}%;background:var(--brand);border-radius:4px"></i></div>
+      <div style="width:26px;text-align:right;font-weight:700;font-size:12.5px">${n}</div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+
+  // ภาระงานผู้แก้ไข
+  html+=`<div class="tbl-wrap" style="margin-bottom:16px"><div class="tbl-head"><h3>ภาระงานผู้แก้ไข</h3><span style="font-size:12.5px;color:var(--muted)">เรียงตามงานค้างมากสุด</span></div>`;
+  if(workload.length===0){ html+=`<div class="empty"><div class="big">ยังไม่มีผู้แก้ไข</div></div>`; }
+  else{
+    html+=`<table><thead><tr><th>ผู้แก้ไข</th><th>หน่วยงาน</th><th>งานค้าง</th><th>รับทั้งหมด</th></tr></thead><tbody>`;
+    workload.forEach(({user,total,open})=>{
+      html+=`<tr style="cursor:default">
+        <td style="font-weight:600">${escapeHtml(user.fullName)}</td>
+        <td style="color:var(--ink-soft)">${escapeHtml(user.department)||'—'}</td>
+        <td><span style="font-weight:700;color:${open>0?'var(--amber)':'var(--muted)'}">${open}</span></td>
+        <td style="color:var(--ink-soft)">${total}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table>`;
+  }
+  html+=`</div>`;
+
+  // กิจกรรมล่าสุด
+  html+=`<div class="tbl-wrap"><div class="tbl-head"><h3>กิจกรรมล่าสุดในระบบ</h3><button class="btn btn-sm btn-ghost" onclick="go('auditlog')">ดู Audit Log →</button></div>`;
+  if(recent.length===0){
+    html+=`<div class="empty"><div class="big">ยังไม่มีกิจกรรม</div></div>`;
+  }else{
+    html+=`<table><thead><tr><th>เวลา</th><th>CAR No.</th><th>การดำเนินการ</th><th>โดย</th></tr></thead><tbody>`;
+    recent.forEach(e=>{
+      html+=`<tr style="cursor:default">
+        <td style="color:var(--ink-soft);font-size:12.5px;white-space:nowrap">${fmtDateTime(e.at)}</td>
+        <td class="mono" style="font-weight:600">${e.car}</td>
+        <td>${escapeHtml(e.text)}</td>
+        <td style="color:var(--ink-soft)">${escapeHtml(e.who)}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table>`;
+  }
+  html+=`</div>`;
+  return html;
 }
 
 /* ---- Dashboard ---- */
